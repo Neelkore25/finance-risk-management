@@ -92,6 +92,14 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
             Educational Risk Analysis Model
           </p>
+          <a
+            href="https://neelkore25.github.io/finance-risk-management/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] font-bold text-sky-500 hover:underline block mt-1"
+          >
+            Live Site: neelkore25.github.io
+          </a>
           <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
             v1.0.0 • SQLite Engine
           </p>
