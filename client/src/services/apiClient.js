@@ -5,7 +5,7 @@
  */
 
 export function getAuthToken() {
-  return localStorage.getItem('riskguard_token') || 'demo_token';
+  return localStorage.getItem('riskguard_token') || null;
 }
 
 export function setAuthToken(token) {
@@ -588,8 +588,12 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   if (cleanEp === '/auth/me') {
-    const activeUser = getStored('user', userDb[0]);
-    return { token: getAuthToken(), user: activeUser };
+    const token = getAuthToken();
+    const activeUser = getStored('user', null);
+    if (!token || !activeUser) {
+      throw new Error('Unauthenticated session');
+    }
+    return { token, user: activeUser };
   }
 
   // PROFILE

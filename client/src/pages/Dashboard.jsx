@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiFetch } from '../services/apiClient';
 import { RiskBadge } from '../components/RiskBadge';
 import {
@@ -11,7 +12,14 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  User,
+  Receipt,
+  Landmark,
+  Briefcase,
+  Sliders,
+  HelpCircle,
+  Sparkles
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -39,6 +47,7 @@ export function Dashboard() {
   const [alerts, setAlerts] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showGuide, setShowGuide] = useState(true);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -96,14 +105,64 @@ export function Dashboard() {
   // Investment Sector Allocation Chart Data
   const sectorData = portfolioRisk?.heatmap?.bySector || [];
 
-  // Risk Score History Chart Data
-  const historyData = history.map(h => ({
-    date: new Date(h.recorded_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-    score: h.overall_score
-  }));
-
   return (
     <div className="space-y-6">
+      {/* 0. INTERACTIVE USER ONBOARDING GUIDE BANNER */}
+      {showGuide && (
+        <div className="opaque-card bg-slate-900 border-sky-800 text-white relative">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-sky-400" />
+              <h3 className="text-sm font-bold text-white">How to Use Finance Risk Analytics (Quick Guide)</h3>
+            </div>
+            <button
+              onClick={() => setShowGuide(false)}
+              className="text-xs text-slate-400 hover:text-white font-semibold"
+            >
+              Dismiss Guide
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+            <Link to="/profile" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
+              <User className="w-5 h-5 text-sky-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-white block">1. Profile</span>
+              <span className="text-[10px] text-slate-400">Set Income & Savings</span>
+            </Link>
+
+            <Link to="/expenses" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
+              <Receipt className="w-5 h-5 text-emerald-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-white block">2. Expenses</span>
+              <span className="text-[10px] text-slate-400">Track Monthly Costs</span>
+            </Link>
+
+            <Link to="/debt" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
+              <Landmark className="w-5 h-5 text-rose-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-white block">3. Debts</span>
+              <span className="text-[10px] text-slate-400">Add Loan Liabilities</span>
+            </Link>
+
+            <Link to="/investments" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
+              <Briefcase className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-white block">4. Portfolio</span>
+              <span className="text-[10px] text-slate-400">Add Stocks & Assets</span>
+            </Link>
+
+            <Link to="/credit-risk" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
+              <CreditCard className="w-5 h-5 text-purple-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-white block">5. Credit Risk</span>
+              <span className="text-[10px] text-slate-400">Score Default Risk</span>
+            </Link>
+
+            <Link to="/simulator" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
+              <Sliders className="w-5 h-5 text-cyan-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-white block">6. What-If</span>
+              <span className="text-[10px] text-slate-400">Simulate Stress Test</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* 1. EXECUTIVE SUMMARY TOP CARD */}
       <div className="opaque-card bg-slate-900 border-slate-800 text-white relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
@@ -124,7 +183,7 @@ export function Dashboard() {
               {overallSummary}
             </p>
             <p className="text-[11px] text-slate-400">
-              Last Evaluated: {new Date().toLocaleDateString()} • Powered by RiskGuard Deterministic Engine
+              Last Evaluated: {new Date().toLocaleDateString()} • Powered by Finance Risk Analytics Engine
             </p>
           </div>
 
