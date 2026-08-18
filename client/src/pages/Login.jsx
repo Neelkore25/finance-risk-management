@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Lock, Mail, AlertCircle, Zap, Check, Plus, ChevronDown } from 'lucide-react';
+import { Shield, Lock, Mail, AlertCircle, Zap, ChevronDown, Plus, Check } from 'lucide-react';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -11,17 +11,11 @@ export function Login() {
 
   // Google Account Chooser State
   const [showGoogleAccounts, setShowGoogleAccounts] = useState(false);
-  const [showCustomGoogle, setShowCustomGoogle] = useState(false);
   const [customGoogleEmail, setCustomGoogleEmail] = useState('');
   const [customGoogleName, setCustomGoogleName] = useState('');
 
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
-
-  const googleAccounts = [
-    { name: 'Neel Kore', email: 'neelkore25@gmail.com', avatar: 'N' },
-    { name: 'Financial Risk Analyst', email: 'risk.analyst@gmail.com', avatar: 'F' }
-  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,7 +55,7 @@ export function Login() {
   };
 
   const handleQuickDemo = async () => {
-    handleSelectGoogleAccount({ name: 'Neel Kore', email: 'neelkore25@gmail.com' });
+    handleSelectGoogleAccount({ name: 'Guest User', email: 'guest.user@example.com' });
   };
 
   return (
@@ -88,7 +82,7 @@ export function Login() {
           </div>
         )}
 
-        {/* GOOGLE SIGN IN BUTTON & ACCOUNT CHOOSER */}
+        {/* GOOGLE SIGN IN BUTTON & REAL OAUTH SIMULATOR */}
         <div className="space-y-3">
           <button
             type="button"
@@ -120,88 +114,41 @@ export function Login() {
             <ChevronDown className={`w-4 h-4 transition-transform ${showGoogleAccounts ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Expanded Google Account Options */}
+          {/* Google Account Email Input Drawer */}
           {showGoogleAccounts && (
-            <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-3 opacity-100 animate-fadeIn">
-              <span className="text-[11px] font-bold text-slate-400 block mb-2">
-                Select Google Account:
+            <form onSubmit={handleCustomGoogleSubmit} className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-3 opacity-100">
+              <span className="text-[11px] font-bold text-slate-300 block">
+                Google Identity Authentication:
               </span>
-
-              {!showCustomGoogle ? (
-                <>
-                  {googleAccounts.map((acc) => (
-                    <button
-                      key={acc.email}
-                      type="button"
-                      onClick={() => handleSelectGoogleAccount(acc)}
-                      className="w-full p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-sky-500 rounded-xl flex items-center justify-between text-left transition-colors opacity-100 group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-sky-600 text-white font-extrabold text-xs flex items-center justify-center border border-sky-400">
-                          {acc.avatar}
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-white group-hover:text-sky-400 transition-colors">
-                            {acc.name}
-                          </h4>
-                          <p className="text-[10px] text-slate-400">{acc.email}</p>
-                        </div>
-                      </div>
-                      <Check className="w-3.5 h-3.5 text-sky-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomGoogle(true)}
-                    className="w-full py-2 px-3 bg-slate-900 border border-dashed border-slate-700 hover:border-sky-500 rounded-xl text-[11px] font-bold text-sky-400 flex items-center justify-center gap-1.5 transition-colors opacity-100"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Enter Custom Gmail Account
-                  </button>
-                </>
-              ) : (
-                <form onSubmit={handleCustomGoogleSubmit} className="space-y-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Your Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={customGoogleName}
-                      onChange={(e) => setCustomGoogleName(e.target.value)}
-                      placeholder="e.g. Neel Kore"
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 opacity-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Gmail Address</label>
-                    <input
-                      type="email"
-                      required
-                      value={customGoogleEmail}
-                      onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                      placeholder="name@gmail.com"
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 opacity-100"
-                    />
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowCustomGoogle(false)}
-                      className="flex-1 py-2 bg-slate-800 text-slate-300 font-bold text-xs rounded-lg hover:bg-slate-700"
-                    >
-                      Back
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 py-2 bg-sky-600 text-white font-bold text-xs rounded-lg hover:bg-sky-500"
-                    >
-                      Sign In
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={customGoogleName}
+                  onChange={(e) => setCustomGoogleName(e.target.value)}
+                  placeholder="Enter your full name"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 opacity-100"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">Google Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={customGoogleEmail}
+                  onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                  placeholder="user@gmail.com"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 opacity-100"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-lg shadow-md transition-colors"
+              >
+                Authenticate Google Account
+              </button>
+            </form>
           )}
         </div>
 
@@ -212,7 +159,7 @@ export function Login() {
           </span>
         </div>
 
-        {/* EMAIL & PASSWORD FORM */}
+        {/* EMAIL & PASSWORD FORM (Clean Inputs, No Pre-filled Defaults) */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1.5">Email Address</label>
@@ -223,7 +170,7 @@ export function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@gmail.com"
+                placeholder="Enter your email address"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors opacity-100"
               />
             </div>
@@ -238,7 +185,7 @@ export function Login() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors opacity-100"
               />
             </div>
@@ -262,7 +209,7 @@ export function Login() {
             className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 opacity-100"
           >
             <Zap className="w-4 h-4" />
-            <span>⚡ One-Click Demo Access</span>
+            <span>⚡ Guest Access (Instant Demo)</span>
           </button>
         </div>
 
