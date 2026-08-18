@@ -1,15 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://finance-risk-analytics.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpbmFuY2Utcmlzay1hbmFseXRpY3MiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoyMDAwMDAwMDAwfQ.pubic_anon_key_production';
 
 export function isSupabaseConfigured() {
-  return Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl !== 'YOUR_SUPABASE_URL');
+  return Boolean(supabaseUrl && supabaseAnonKey);
 }
 
 export const supabase = createClient(
-  isSupabaseConfigured() ? supabaseUrl : 'https://placeholder.supabase.co',
-  isSupabaseConfigured() ? supabaseAnonKey : 'placeholder-key',
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,
