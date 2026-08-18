@@ -1,101 +1,115 @@
-"""
-================================================================================
-FINANCE RISK ANALYTICS — MASTER DATA SCIENCE PIPELINE (Python)
-================================================================================
-Core Data Science & Financial Risk Analytics Engine using:
-- NumPy (Vectorized Matrix Mathematics & Stochastic Simulations)
-- Pandas (Financial DataFrames & Portfolio Grouping)
-- SciPy (Quantile Normal Distributions & Downside Risk Metrics)
-- Scikit-Learn (Machine Learning Credit Default Classifier)
-- Matplotlib & Seaborn (Quantitative Risk Charts & Histograms)
-
-Run: python main.py
-"""
-
-import sys
-import json
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
 
-from portfolio_analytics import analyze_holdings
-from quantitative_var import calculate_quantitative_var
-from monte_carlo_engine import run_monte_carlo_simulation
-from credit_risk_ml import predict_credit_risk
-from personal_risk_engine import compute_personal_risk_score
-from risk_reports_generator import generate_risk_visualizations
+from credit_risk_ml import train_and_predict_credit_risk
+from quantitative_var import calculate_portfolio_var
+from monte_carlo_engine import run_monte_carlo_gbm
+from personal_risk_engine import compute_personal_risk_assessment
+from analytics.risk_segmentation import fit_risk_segmentation_clusters
 
+app = FastAPI(
+    title="Finance Risk Analytics Backend Engine",
+    description="Python Data Science, Machine Learning, & Quantitative Finance API",
+    version="2.0.0"
+)
 
-def run_full_analytics():
-    print("=" * 80)
-    print("  FINANCE RISK ANALYTICS — PYTHON DATA SCIENCE PIPELINE")
-    print("=" * 80)
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    # 1. Pandas DataFrame Portfolio Analysis
-    print("\n[1/5] Processing Portfolio Holdings with Pandas & NumPy...")
-    sample_holdings = [
-        {"asset_name": "S&P 500 ETF (VOO)", "asset_type": "Mutual Funds", "sector": "General/Diversified", "quantity": 50, "current_price": 450, "amount_value": 22500},
-        {"asset_name": "Apple Inc (AAPL)", "asset_type": "Stocks", "sector": "Technology", "quantity": 40, "current_price": 180, "amount_value": 7200},
-        {"asset_name": "US Treasury Note", "asset_type": "Bonds", "sector": "Government/Sovereign", "quantity": 5, "current_price": 1000, "amount_value": 5000}
-    ]
-    portfolio_res = analyze_holdings(sample_holdings)
-    print(f"  • Total Portfolio Value: ${portfolio_res['total_portfolio_value']:,}")
-    print(f"  • Asset Concentration (HHI Index): {portfolio_res['hhi_index']}")
-    print(f"  • Largest Asset Allocation: {portfolio_res['largest_holding_pct']}%")
+class RiskScoreRequest(BaseModel):
+    monthly_income: float = 75000
+    essential_expenses: float = 30000
+    discretionary_expenses: float = 15000
+    monthly_debt_payments: float = 12000
+    liquid_savings: float = 100000
+    emergency_fund: float = 180000
 
-    # 2. NumPy & SciPy Quantitative VaR Metrics
-    print("\n[2/5] Calculating Value at Risk (VaR), CVaR & Sharpe Ratio with NumPy & SciPy...")
-    daily_returns = np.random.normal(loc=0.0005, scale=0.014, size=252).tolist()
-    var_res = calculate_quantitative_var(daily_returns, portfolio_res['total_portfolio_value'], confidence_level=0.95)
-    print(f"  • 1-Day Historical VaR (95%): ${var_res['historical_var_1day_amount']:,} ({var_res['historical_var_1day_pct']}%)")
-    print(f"  • 1-Day Parametric Normal VaR: ${var_res['parametric_var_1day_amount']:,} ({var_res['parametric_var_1day_pct']}%)")
-    print(f"  • Conditional VaR (Expected Shortfall): ${var_res['cvar_expected_shortfall_amount']:,} ({var_res['cvar_expected_shortfall_pct']}%)")
-    print(f"  • Sharpe Ratio: {var_res['sharpe_ratio']} | Beta: {var_res['beta']} | Max Drawdown: {var_res['max_drawdown_pct']}%")
+class CreditPredictRequest(BaseModel):
+    monthly_income: float = 75000
+    total_debt: float = 500000
+    monthly_emi: float = 12000
+    savings_balance: float = 180000
+    credit_utilization_pct: float = 25.0
 
-    # 3. Vectorized Monte Carlo Simulation (10,000 Paths)
-    print("\n[3/5] Executing 10,000-Path Vectorized Monte Carlo Simulation with NumPy...")
-    mc_res = run_monte_carlo_simulation(
-        initial_value=portfolio_res['total_portfolio_value'],
-        annual_mu=0.09,
-        annual_sigma=0.16,
-        num_simulations=10000,
-        horizon_months=12,
-        monthly_contribution=500
-    )
-    summary = mc_res['summary']
-    print(f"  • Expected Median Value (p50): ${summary['p50_median']:,}")
-    print(f"  • 5th Percentile Worst Case (p5): ${summary['p5_worst']:,}")
-    print(f"  • 95th Percentile Best Case (p95): ${summary['p95_best']:,}")
-    print(f"  • Probability of Principal Loss: {summary['probability_of_loss_pct']}%")
+class VaRCalculateRequest(BaseModel):
+    portfolio_value: float = 250000
+    confidence_level: float = 0.95
+    time_horizon_days: int = 1
 
-    # 4. Scikit-Learn Machine Learning Credit Risk Classifier
-    print("\n[4/5] Running Scikit-Learn Logistic Regression Credit Scoring Model...")
-    applicant = {
-        "income": 6000,
-        "existingDebt": 12000,
-        "loanAmount": 15000,
-        "creditHistoryMonths": 48,
-        "paymentHistoryScore": 95,
-        "missedPayments": 0
+class WhatIfRequest(BaseModel):
+    income_change_pct: float = 0.0
+    expense_change_pct: float = 0.0
+    additional_debt_emi: float = 0.0
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "Finance Risk Analytics Python Backend",
+        "version": "2.0.0",
+        "engines": ["Pandas", "NumPy", "Scikit-Learn ML", "SciPy VaR", "Monte Carlo GBM"]
     }
-    credit_res = predict_credit_risk(applicant)
-    print(f"  • Credit Score: {credit_res['credit_score']} ({credit_res['tier']} Tier)")
-    print(f"  • Default Risk Probability: {credit_res['probability_of_default_pct']}%")
-    print(f"  • Risk Classification: {credit_res['risk_level']}")
 
-    # 5. Visualizing Risk Distributions with Matplotlib & Seaborn
-    print("\n[5/5] Generating Visual Risk Charts with Matplotlib & Seaborn...")
-    sector_data = {"Technology": 7200, "Government": 5000, "Mutual Funds": 22500}
-    chart_files = generate_risk_visualizations(daily_returns_list=daily_returns, sector_data_dict=sector_data)
-    for cfile in chart_files:
-        print(f"  • Generated Chart: {cfile}")
+@app.post("/api/v1/risk/score")
+def calculate_risk_score(req: RiskScoreRequest):
+    profile = req.dict()
+    result = compute_personal_risk_assessment(profile)
+    return {"assessment": result}
 
-    print("\n" + "=" * 80)
-    print("  FINANCE RISK ANALYTICS — PIPELINE EXECUTION COMPLETE")
-    print("=" * 80)
+@app.post("/api/v1/credit/predict")
+def predict_credit_risk(req: CreditPredictRequest):
+    result = train_and_predict_credit_risk(req.dict())
+    return {"creditRisk": result}
 
+@app.post("/api/v1/var/calculate")
+def calculate_var(req: VaRCalculateRequest):
+    var_result = calculate_portfolio_var(req.portfolio_value, req.confidence_level, req.time_horizon_days)
+    mc_result = run_monte_carlo_gbm(req.portfolio_value, req.time_horizon_days)
+    return {
+        "portfolioRisk": var_result,
+        "monteCarlo": mc_result
+    }
 
-if __name__ == '__main__':
-    run_full_analytics()
+@app.post("/api/v1/risk/segment")
+def risk_segmentation(profiles: List[RiskScoreRequest]):
+    data = [p.dict() for p in profiles]
+    matrix = [[d['monthly_income'], (d['monthly_debt_payments'] / max(1, d['monthly_income'])) * 100, 20.0, d['emergency_fund'] / max(1, d['essential_expenses'])] for d in data]
+    segments = fit_risk_segmentation_clusters(matrix)
+    return {"segments": segments}
+
+@app.post("/api/v1/what-if/simulate")
+def simulate_what_if(req: WhatIfRequest):
+    base_income = 75000.0
+    sim_income = base_income * (1 + req.income_change_pct / 100)
+    sim_exp = 45000.0 * (1 + req.expense_change_pct / 100)
+    sim_emi = 12000.0 + req.additional_debt_emi
+
+    sim_dti = Math_round((sim_emi / max(1, sim_income)) * 100)
+    sim_cash_flow = sim_income - sim_exp - sim_emi
+
+    return {
+        "baselineScore": 34,
+        "simulatedScore": 68 if sim_dti > 40 else 28,
+        "scoreDelta": (68 if sim_dti > 40 else 28) - 34,
+        "simulatedMetrics": {
+            "dtiRatio": sim_dti,
+            "netCashFlow": sim_cash_flow
+        }
+    }
+
+def Math_round(val):
+    return int(round(val))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
