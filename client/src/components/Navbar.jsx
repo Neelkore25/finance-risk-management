@@ -23,7 +23,7 @@ export function Navbar({ setMobileOpen }) {
             Active Workspace
           </span>
           <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-            Personal Portfolio Risk Dashboard
+            Finance Risk Analytics Dashboard
           </p>
         </div>
       </div>

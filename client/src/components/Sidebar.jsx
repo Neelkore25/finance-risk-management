@@ -54,11 +54,11 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
         <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
           <Shield className="w-8 h-8 text-sky-500 mr-3 stroke-[2.5]" />
           <div>
-            <h1 className="font-extrabold text-lg text-slate-900 dark:text-white tracking-wider flex items-center gap-1">
-              RISK<span className="text-sky-500">GUARD</span>
+            <h1 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-wider leading-tight">
+              FINANCE <span className="text-sky-500">RISK ANALYTICS</span>
             </h1>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold tracking-widest uppercase">
-              Fintech Risk Platform
+            <p className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold tracking-widest uppercase mt-0.5">
+              Quantitative Analytics Suite
             </p>
           </div>
         </div>
