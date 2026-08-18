@@ -22,6 +22,8 @@ import { Simulator } from './pages/Simulator';
 import { RiskHistory } from './pages/RiskHistory';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
+import { Methodology } from './pages/Methodology';
+import { AdminDashboard } from './pages/AdminDashboard';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -61,6 +63,8 @@ function MainLayout() {
             <Route path="/simulator" element={<Simulator />} />
             <Route path="/risk-history" element={<RiskHistory />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/methodology" element={<Methodology />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

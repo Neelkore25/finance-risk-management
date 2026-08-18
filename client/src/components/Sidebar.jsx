@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard,
   User,
@@ -14,26 +15,35 @@ import {
   FileText,
   Settings,
   Shield,
-  Activity
+  Activity,
+  BookOpen,
+  Lock
 } from 'lucide-react';
 
-const navItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Financial Profile', path: '/profile', icon: User },
-  { name: 'Expense Tracker', path: '/expenses', icon: Receipt },
-  { name: 'Debt Management', path: '/debt', icon: CreditCard },
-  { name: 'Portfolio Holdings', path: '/investments', icon: TrendingUp },
-  { name: 'Quantitative VaR', path: '/portfolio-risk', icon: PieChart },
-  { name: 'Credit Risk Module', path: '/credit-risk', icon: ShieldAlert },
-  { name: 'Financial Goals', path: '/goals', icon: Target },
-  { name: 'Risk Analysis', path: '/risk-analysis', icon: Activity },
-  { name: 'What-If Simulator', path: '/simulator', icon: Sliders },
-  { name: 'Risk History', path: '/risk-history', icon: History },
-  { name: 'Reports & Exports', path: '/reports', icon: FileText },
-  { name: 'Settings', path: '/settings', icon: Settings },
-];
-
 export function Sidebar({ mobileOpen, setMobileOpen }) {
+  const { userProfile } = useAuth();
+
+  const navItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Financial Profile', path: '/profile', icon: User },
+    { name: 'Expense Tracker', path: '/expenses', icon: Receipt },
+    { name: 'Debt Management', path: '/debt', icon: CreditCard },
+    { name: 'Portfolio Holdings', path: '/investments', icon: TrendingUp },
+    { name: 'Quantitative VaR', path: '/portfolio-risk', icon: PieChart },
+    { name: 'Credit Risk Module', path: '/credit-risk', icon: ShieldAlert },
+    { name: 'Financial Goals', path: '/goals', icon: Target },
+    { name: 'Risk Analysis', path: '/risk-analysis', icon: Activity },
+    { name: 'What-If Simulator', path: '/simulator', icon: Sliders },
+    { name: 'Risk History', path: '/risk-history', icon: History },
+    { name: 'Reports & Exports', path: '/reports', icon: FileText },
+    { name: 'Methodology', path: '/methodology', icon: BookOpen },
+    { name: 'Settings', path: '/settings', icon: Settings },
+  ];
+
+  if (userProfile?.role === 'admin') {
+    navItems.push({ name: 'Admin Dashboard', path: '/admin', icon: Lock });
+  }
+
   return (
     <>
       {/* Mobile Backdrop */}
@@ -101,7 +111,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
             Live Site: neelkore25.github.io
           </a>
           <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-            v1.0.0 • SQLite Engine
+            v2.0.0 • Supabase RLS DB
           </p>
         </div>
       </aside>

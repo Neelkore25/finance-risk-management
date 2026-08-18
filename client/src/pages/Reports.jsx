@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { apiFetch, getAuthToken } from '../services/apiClient';
+import { apiFetch, formatINR } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
-import { FileText, Download, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { FileText, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 export function Reports() {
@@ -9,22 +9,19 @@ export function Reports() {
   const [personalRisk, setPersonalRisk] = useState(null);
   const [portfolioRisk, setPortfolioRisk] = useState(null);
   const [creditRisk, setCreditRisk] = useState(null);
-  const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [pRes, portRes, credRes, recRes] = await Promise.all([
+        const [pRes, portRes, credRes] = await Promise.all([
           apiFetch('/risk/personal'),
           apiFetch('/risk/portfolio'),
-          apiFetch('/risk/credit'),
-          apiFetch('/recommendations')
+          apiFetch('/risk/credit')
         ]);
         setPersonalRisk(pRes.assessment);
         setPortfolioRisk(portRes.portfolioRisk);
         setCreditRisk(credRes.creditRisk);
-        setRecommendations(recRes.recommendations || []);
       } catch (err) {
         console.error('Failed to load report data:', err);
       } finally {
@@ -35,8 +32,33 @@ export function Reports() {
   }, []);
 
   const handleDownloadCSV = () => {
-    const token = getAuthToken();
-    window.open(`/api/reports/csv?token=${token}`, '_blank');
+    if (!personalRisk) return;
+    const m = personalRisk.metrics;
+    const csvRows = [
+      ['Metric', 'Value (INR ₹)'],
+      ['Monthly Net Income', m.monthlyIncome],
+      ['Essential Expenses', m.essentialExp],
+      ['Discretionary Expenses', m.discretionaryExp],
+      ['Total Monthly Expenses', m.totalMonthlyExpenses],
+      ['Monthly Debt Payment (EMI)', m.totalDebtPayment],
+      ['Net Monthly Cash Flow', m.netCashFlow],
+      ['Liquid Savings', m.existingSavings],
+      ['Emergency Fund Reserve', m.emergencyFund],
+      ['Savings Rate (%)', `${m.savingsRate}%`],
+      ['Debt-to-Income DTI (%)', `${m.dtiRatio}%`],
+      ['Emergency Reserve Coverage (Months)', m.emergencyCoverageMonths],
+      ['Overall Risk Score (0-100)', personalRisk.overallScore],
+      ['Risk Level', personalRisk.overallLevel]
+    ];
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.map(e => e.join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Finance_Risk_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleDownloadPDF = () => {
@@ -50,13 +72,13 @@ export function Reports() {
     doc.setFillColor(15, 23, 42); // slate-900
     doc.rect(0, 0, 210, 35, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('RISKGUARD FINANCIAL RISK REPORT', margin, y);
+    doc.text('FINANCE RISK ANALYTICS REPORT (INR ₹)', margin, y);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`User: ${user?.fullName || 'User'} (${user?.email}) | Generated: ${new Date().toLocaleString()}`, margin, y + 8);
+    doc.text(`User: ${user?.email || 'Authenticated User'} | Generated: ${new Date().toLocaleString()}`, margin, y + 8);
 
     y = 45;
 
@@ -72,76 +94,30 @@ export function Reports() {
     doc.text(doc.splitTextToSize(personalRisk.overallSummary, 180), margin, y);
     y += 15;
 
-    // Category Scores
+    // Financial Metrics
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Risk Category Decomposition', margin, y);
+    doc.text('Financial Metrics Summary', margin, y);
     y += 6;
 
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Category', margin, y);
-    doc.text('Score', margin + 65, y);
-    doc.text('Risk Level', margin + 95, y);
-    doc.text('Metric', margin + 140, y);
-    y += 4;
-    doc.line(margin, y, 195, y);
-    y += 5;
-
-    doc.setFont('helvetica', 'normal');
-    Object.entries(personalRisk.categories).forEach(([key, cat]) => {
-      doc.text(key.replace(/([A-Z])/g, ' $1'), margin, y);
-      doc.text(`${cat.score}/100`, margin + 65, y);
-      doc.text(cat.level, margin + 95, y);
-      doc.text(cat.metric, margin + 140, y);
-      y += 6;
-    });
-
-    y += 8;
-
-    // Quantitative Metrics
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Quantitative Portfolio Risk (VaR)', margin, y);
-    y += 7;
-
+    const m = personalRisk.metrics;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Portfolio Value: $${portfolioRisk?.totalValue?.toLocaleString() || 0}`, margin, y);
-    doc.text(`1-Day Historical VaR (95%): $${portfolioRisk?.metrics?.historicalVaR1DayAmount?.toLocaleString() || 0} (${portfolioRisk?.metrics?.historicalVaR1DayPct}%)`, margin + 80, y);
+    doc.text(`Monthly Income: ${formatINR(m.monthlyIncome)}`, margin, y);
+    doc.text(`Monthly Expenses: ${formatINR(m.totalMonthlyExpenses)}`, margin + 80, y);
     y += 6;
-    doc.text(`Sharpe Ratio: ${portfolioRisk?.metrics?.sharpeRatio || 0}`, margin, y);
-    doc.text(`Portfolio Beta: ${portfolioRisk?.metrics?.beta || 1}`, margin + 80, y);
+    doc.text(`Monthly EMI Debt Payment: ${formatINR(m.totalDebtPayment)}`, margin, y);
+    doc.text(`Net Monthly Cash Flow: ${formatINR(m.netCashFlow)}`, margin + 80, y);
     y += 6;
-    doc.text(`Max Drawdown: ${portfolioRisk?.metrics?.maxDrawdownPct || 0}%`, margin, y);
-    doc.text(`Credit Score: ${creditRisk?.creditScore || 720} (${creditRisk?.tier || 'Good'})`, margin + 80, y);
+    doc.text(`Debt-to-Income (DTI): ${m.dtiRatio}%`, margin, y);
+    doc.text(`Emergency Coverage: ${m.emergencyCoverageMonths} Months`, margin + 80, y);
 
     y += 15;
-
-    // Recommendations
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Tailored Recommendations', margin, y);
-    y += 7;
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    recommendations.forEach((rec, i) => {
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${i + 1}. ${rec.recommendation} [${rec.severity}]`, margin, y);
-      y += 5;
-      doc.setFont('helvetica', 'normal');
-      doc.text(doc.splitTextToSize(`Action: ${rec.suggestedAction}`, 180), margin + 4, y);
-      y += 10;
-    });
-
-    // Disclaimer
-    y = 280;
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
-    doc.text('RiskGuard is an educational financial risk-analysis tool and does not provide professional financial advice.', margin, y);
+    doc.text('Developed for educational and analytical purposes. Model estimates — not professional financial or credit advice.', margin, y);
 
-    doc.save(`RiskGuard_Report_${user?.fullName?.replace(/\s+/g, '_') || 'Export'}.pdf`);
+    doc.save(`Finance_Risk_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   if (loading) {
@@ -157,7 +133,7 @@ export function Reports() {
             Executive Reports & Data Exports
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Download comprehensive PDF risk audit reports or raw CSV financial metric exports.
+            Download comprehensive PDF risk audit reports or raw CSV financial metric exports in Indian Rupees (₹).
           </p>
         </div>
       </div>
@@ -171,12 +147,12 @@ export function Reports() {
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">Executive PDF Risk Summary</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Formatted multi-page PDF document</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Formatted PDF document in ₹</p>
             </div>
           </div>
 
           <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            Generates an enterprise-formatted PDF encompassing scorecards, 6-category risk breakdown, quantitative portfolio VaR, Credit risk score, top 3 risks, and recommendations.
+            Generates an executive PDF report containing your financial scorecards, category decomposition, portfolio VaR, and credit metrics.
           </p>
 
           <button
@@ -201,7 +177,7 @@ export function Reports() {
           </div>
 
           <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            Exports raw structured CSV data containing your financial metrics, income/expense totals, quantitative VaR, Sharpe ratio, and credit metrics for Excel analysis.
+            Exports raw structured CSV data containing your financial metrics, income/expense totals, DTI, cash flow, and emergency reserves for Excel analysis.
           </p>
 
           <button
