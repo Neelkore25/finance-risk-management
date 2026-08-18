@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
+import { AIRiskAssistant } from './components/AIRiskAssistant';
 
 // Pages
 import { Login } from './pages/Login';
@@ -27,7 +28,7 @@ function RequireAuth({ children }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-xs font-semibold">
-        Initializing RiskGuard Session...
+        Initializing Finance Risk Analytics Session...
       </div>
     );
   }
@@ -65,6 +66,9 @@ function MainLayout() {
           </Routes>
         </main>
       </div>
+
+      {/* Floating AI Risk Assistant Widget */}
+      <AIRiskAssistant />
     </div>
   );
 }
