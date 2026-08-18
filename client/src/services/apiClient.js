@@ -18,14 +18,24 @@ export function setAuthToken(token) {
 }
 
 // Fallback Mock Engine for Static Deployments (e.g. GitHub Pages)
-function getStaticFallback(endpoint) {
+function getStaticFallback(endpoint, options = {}) {
   const cleanEp = endpoint.split('?')[0];
 
+  let bodyData = {};
+  if (options.body) {
+    try {
+      bodyData = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+    } catch (e) {}
+  }
+
   if (cleanEp === '/auth/me' || cleanEp === '/auth/login' || cleanEp === '/auth/register') {
-    return {
-      token: 'demo_token',
-      user: { id: 1, email: 'demo@riskguard.io', fullName: 'User' }
+    const user = {
+      id: 1,
+      email: bodyData.email || 'neelkore25@gmail.com',
+      fullName: bodyData.fullName || 'Neel'
     };
+    setAuthToken('demo_token');
+    return { token: 'demo_token', user };
   }
 
   if (cleanEp === '/risk/personal') {
@@ -163,13 +173,13 @@ function getStaticFallback(endpoint) {
           { factor: 'Debt Burden', impact: 'Negative', detail: '$12,000 outstanding debt' }
         ],
         metrics: {
-          income: 5000,
-          existingDebt: 12000,
-          loanAmount: 15000,
+          income: bodyData.income || 5000,
+          existingDebt: bodyData.existingDebt || 12000,
+          loanAmount: bodyData.loanAmount || 15000,
           dti: 8.0,
-          creditHistoryMonths: 36,
-          paymentHistoryScore: 95,
-          missedPayments: 0
+          creditHistoryMonths: bodyData.creditHistoryMonths || 36,
+          paymentHistoryScore: bodyData.paymentHistoryScore || 95,
+          missedPayments: bodyData.missedPayments || 0
         }
       }
     };
@@ -306,6 +316,11 @@ export async function apiFetch(endpoint, options = {}) {
       headers
     });
 
+    if (response.status === 405 || response.status === 404) {
+      // GitHub Pages static server returns HTTP 405 Method Not Allowed on POST or HTTP 404 on missing backend
+      return getStaticFallback(endpoint, options);
+    }
+
     if (response.status === 401) {
       setAuthToken(null);
     }
@@ -319,6 +334,6 @@ export async function apiFetch(endpoint, options = {}) {
     return data;
   } catch (err) {
     // If backend API is unreachable (e.g. static hosting on GitHub Pages), use fallback mock engine
-    return getStaticFallback(endpoint);
+    return getStaticFallback(endpoint, options);
   }
 }
