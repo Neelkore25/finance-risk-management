@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* STRICT ZERO-TRANSPARENCY MANDATE RULES */
+* {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Zero-Transparency Solid UI Classes */
+.opaque-card {
+  @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm rounded-xl p-6 opacity-100;
+}
+
+.opaque-modal-overlay {
+  @apply fixed inset-0 bg-slate-950 opacity-90 z-50 flex items-center justify-center p-4;
+}
+
+.opaque-modal-content {
+  @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl w-full max-w-lg p-6 opacity-100 z-50;
+}
+
+.opaque-dropdown {
+  @apply absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl p-2 z-50 opacity-100;
+}
+
+.opaque-tooltip {
+  @apply bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg border border-slate-700 dark:border-slate-300 opacity-100 z-50;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+}
