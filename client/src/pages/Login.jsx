@@ -33,8 +33,10 @@ export function Login() {
     setLoading(true);
     try {
       await googleLogin();
+      navigate('/dashboard');
     } catch (err) {
-      setError('Unable to sign in with Google. Please try again.');
+      setError(err.message || 'Unable to sign in with Google. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
