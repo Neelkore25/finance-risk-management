@@ -35,6 +35,15 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const googleLogin = async () => {
+    const data = await apiFetch('/auth/google', {
+      method: 'POST'
+    });
+    setAuthToken(data.token);
+    setUser(data.user);
+    return data.user;
+  };
+
   const register = async (email, password, fullName) => {
     const data = await apiFetch('/auth/register', {
       method: 'POST',
@@ -51,7 +60,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, googleLogin, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

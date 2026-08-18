@@ -8,7 +8,7 @@ export function Login() {
   const [password, setPassword] = useState('password123');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -43,7 +43,7 @@ export function Login() {
     setError('');
     setLoading(true);
     try {
-      await login('neelkore25@gmail.com', 'password123');
+      await googleLogin();
       navigate('/dashboard');
     } catch (err) {
       setError('Google Sign-In failed.');

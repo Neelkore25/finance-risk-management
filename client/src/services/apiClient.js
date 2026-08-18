@@ -587,6 +587,17 @@ export async function apiFetch(endpoint, options = {}) {
     return { token: `token_${existingUser.id}`, user: sessionUser };
   }
 
+  if (cleanEp === '/auth/google') {
+    const googleUser = {
+      id: 99,
+      email: 'neelkore25@gmail.com',
+      fullName: 'Neel Kore (Google Account)'
+    };
+    setStored('user', googleUser);
+    setAuthToken('token_google_user');
+    return { token: 'token_google_user', user: googleUser };
+  }
+
   if (cleanEp === '/auth/me') {
     const token = getAuthToken();
     const activeUser = getStored('user', null);
