@@ -538,14 +538,58 @@ export async function apiFetch(endpoint, options = {}) {
     } catch (e) {}
   }
 
-  // AUTH
-  if (cleanEp === '/auth/me' || cleanEp === '/auth/login' || cleanEp === '/auth/register') {
-    const user = getStored('user', { id: 1, email: body.email || 'neelkore25@gmail.com', fullName: body.fullName || 'Neel' });
-    if (body.fullName || body.email) {
-      setStored('user', user);
+  // AUTHENTICATION ENGINE (Strict Validation)
+  let userDb = getStored('registered_users_db', [
+    { id: 1, email: 'neelkore25@gmail.com', password: 'password123', fullName: 'Neel' }
+  ]);
+
+  if (cleanEp === '/auth/register') {
+    const email = (body.email || '').trim().toLowerCase();
+    const password = body.password || '';
+    const fullName = (body.fullName || '').trim() || 'User';
+
+    if (!email || !email.includes('@')) {
+      throw new Error('Please enter a valid email address.');
     }
-    setAuthToken('demo_token');
-    return { token: 'demo_token', user };
+    if (!password || password.length < 4) {
+      throw new Error('Password must be at least 4 characters long.');
+    }
+
+    const existingUser = userDb.find(u => u.email === email);
+    if (existingUser) {
+      throw new Error(`An account with email "${email}" already exists. Please sign in instead.`);
+    }
+
+    const newUser = { id: Date.now(), email, password, fullName };
+    userDb.push(newUser);
+    setStored('registered_users_db', userDb);
+    setStored('user', { id: newUser.id, email: newUser.email, fullName: newUser.fullName });
+    setAuthToken(`token_${newUser.id}`);
+    return { token: `token_${newUser.id}`, user: { id: newUser.id, email: newUser.email, fullName: newUser.fullName } };
+  }
+
+  if (cleanEp === '/auth/login') {
+    const email = (body.email || '').trim().toLowerCase();
+    const password = body.password || '';
+
+    const existingUser = userDb.find(u => u.email === email);
+    if (!existingUser) {
+      throw new Error(`No account registered with email "${email}". Please click Register to create an account.`);
+    }
+
+    if (existingUser.password !== password) {
+      throw new Error('Incorrect password. Please double check your credentials.');
+    }
+
+    const sessionUser = { id: existingUser.id, email: existingUser.email, fullName: existingUser.fullName };
+    setStored('user', sessionUser);
+    setAuthToken(`token_${existingUser.id}`);
+    return { token: `token_${existingUser.id}`, user: sessionUser };
+  }
+
+  if (cleanEp === '/auth/me') {
+    const activeUser = getStored('user', userDb[0]);
+    return { token: getAuthToken(), user: activeUser };
   }
 
   // PROFILE
