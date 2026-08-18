@@ -697,25 +697,19 @@ router.put('/settings', authMiddleware, (req, res) => {
 });
 
 // PYTHON ANALYTICS MODULE INTEGRATION
-router.get('/analytics/python', authMiddleware, (req, res) => {
+const { runPythonAnalytics } = require('../services/pythonBridge');
+
+router.get('/analytics/python', authMiddleware, async (req, res) => {
   try {
     const investments = db.prepare('SELECT * FROM investments WHERE user_id = ?').all(req.user.userId);
     const profile = db.prepare('SELECT * FROM financial_profiles WHERE user_id = ?').get(req.user.userId) || {};
 
-    const totalValue = investments.reduce((sum, inv) => sum + Number(inv.amount_value || 0), 0);
-    const assetCount = investments.length;
+    const pyResult = await runPythonAnalytics('all', { investments, profile });
 
     res.json({
       engine: 'Python Data Analytics Suite (NumPy, Pandas, SciPy, Scikit-Learn)',
-      status: 'active',
-      analytics: {
-        portfolioTotalValue: totalValue,
-        assetCount: assetCount,
-        numpyVectorizedMonteCarlo: '10,000 Paths Supported',
-        pandasDataFramesProcessed: true,
-        scipyNormQuantiles: 'VaR 95%/99% & CVaR Expected Shortfall',
-        scikitLearnModel: 'Logistic Regression Default Classifier'
-      }
+      pythonBridge: pyResult,
+      status: 'active'
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to run Python analytics endpoint.' });
