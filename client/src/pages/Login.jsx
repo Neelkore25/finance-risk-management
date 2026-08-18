@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, Lock, Mail, AlertCircle, Zap } from 'lucide-react';
+import { GoogleAuthModal } from '../components/GoogleAuthModal';
 
 export function Login() {
   const [email, setEmail] = useState('neelkore25@gmail.com');
   const [password, setPassword] = useState('password123');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
+
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
 
@@ -39,11 +42,12 @@ export function Login() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleSelectGoogleAccount = async (account) => {
+    setIsGoogleModalOpen(false);
     setError('');
     setLoading(true);
     try {
-      await googleLogin();
+      await googleLogin({ name: account.name, email: account.email });
       navigate('/dashboard');
     } catch (err) {
       setError('Google Sign-In failed.');
@@ -77,9 +81,10 @@ export function Login() {
 
         {/* Google Sign-In Option */}
         <button
-          onClick={handleGoogleSignIn}
+          type="button"
+          onClick={() => setIsGoogleModalOpen(true)}
           disabled={loading}
-          className="w-full py-3 bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-3 border border-slate-200"
+          className="w-full py-3 bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-3 border border-slate-200 opacity-100"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
@@ -152,9 +157,10 @@ export function Login() {
         {/* Quick Demo Access Button */}
         <div className="pt-2 border-t border-slate-800/80">
           <button
+            type="button"
             onClick={handleQuickDemo}
             disabled={loading}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 opacity-100"
           >
             <Zap className="w-4 h-4" />
             <span>⚡ One-Click Demo Access</span>
@@ -168,6 +174,13 @@ export function Login() {
           </Link>
         </div>
       </div>
+
+      {/* Interactive Google Account Chooser Modal (100% Solid Opaque) */}
+      <GoogleAuthModal
+        isOpen={isGoogleModalOpen}
+        onClose={() => setIsGoogleModalOpen(false)}
+        onSelectAccount={handleSelectGoogleAccount}
+      />
     </div>
   );
 }

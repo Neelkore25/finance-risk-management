@@ -35,9 +35,10 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const googleLogin = async () => {
+  const googleLogin = async (accountData = {}) => {
     const data = await apiFetch('/auth/google', {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify(accountData)
     });
     setAuthToken(data.token);
     setUser(data.user);

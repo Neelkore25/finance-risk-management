@@ -589,13 +589,13 @@ export async function apiFetch(endpoint, options = {}) {
 
   if (cleanEp === '/auth/google') {
     const googleUser = {
-      id: 99,
-      email: 'neelkore25@gmail.com',
-      fullName: 'Neel Kore (Google Account)'
+      id: Date.now(),
+      email: body.email || 'neelkore25@gmail.com',
+      fullName: body.name || body.fullName || 'Neel Kore'
     };
     setStored('user', googleUser);
-    setAuthToken('token_google_user');
-    return { token: 'token_google_user', user: googleUser };
+    setAuthToken(`token_google_${googleUser.id}`);
+    return { token: `token_google_${googleUser.id}`, user: googleUser };
   }
 
   if (cleanEp === '/auth/me') {
