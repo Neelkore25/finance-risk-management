@@ -30,8 +30,8 @@ jobs:
 
       - name: Build React Client with Production Variables
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://finance-risk-analytics.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpbmFuY2Utcmlzay1hbmFseXRpY3MiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoyMDAwMDAwMDAwfQ.pubic_anon_key_production' }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://pxxqrrnpbpldyslseegy.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable__T31MM88-paDjC7ejcFWlw_cejGuMls' }}
           VITE_ANALYTICS_API_URL: ${{ secrets.VITE_ANALYTICS_API_URL || 'https://finance-risk-analytics-python.up.railway.app' }}
         run: |
           cd client
