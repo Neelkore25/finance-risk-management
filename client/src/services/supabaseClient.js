@@ -1,20 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://finance-risk-analytics.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpbmFuY2Utcmlzay1hbmFseXRpY3MiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoyMDAwMDAwMDAwfQ.pubic_anon_key_production';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export function isSupabaseConfigured() {
-  return Boolean(supabaseUrl && supabaseAnonKey);
+  return Boolean(
+    supabaseUrl &&
+    supabaseAnonKey &&
+    supabaseUrl.startsWith('https://') &&
+    !supabaseUrl.includes('finance-risk-analytics.supabase.co') &&
+    !supabaseUrl.includes('placeholder') &&
+    !supabaseUrl.includes('YOUR_SUPABASE_URL')
+  );
 }
 
 export const supabase = createClient(
-  supabaseUrl,
-  supabaseAnonKey,
+  isSupabaseConfigured() ? supabaseUrl : 'https://placeholder.supabase.co',
+  isSupabaseConfigured() ? supabaseAnonKey : 'placeholder-key',
   {
     auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
+      persistSession: isSupabaseConfigured(),
+      autoRefreshToken: isSupabaseConfigured(),
+      detectSessionInUrl: isSupabaseConfigured()
     }
   }
 );

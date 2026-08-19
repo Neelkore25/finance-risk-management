@@ -27,11 +27,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     async function initSession() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setUser(session.user);
-          const profile = await fetchUserProfile(session.user.id);
-          setUserProfile(profile);
+        if (isSupabaseConfigured()) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            setUser(session.user);
+            const profile = await fetchUserProfile(session.user.id);
+            setUserProfile(profile);
+          } else {
+            setUser(null);
+            setUserProfile(null);
+          }
         } else {
           const savedUser = sessionStorage.getItem('riskguard_auth_user');
           if (savedUser) {
@@ -52,57 +57,55 @@ export function AuthProvider({ children }) {
 
     initSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        const profile = await fetchUserProfile(session.user.id);
-        setUserProfile(profile);
-      } else {
-        const savedUser = sessionStorage.getItem('riskguard_auth_user');
-        if (savedUser) {
-          const parsed = JSON.parse(savedUser);
-          setUser(parsed);
-          setUserProfile({ id: parsed.id, email: parsed.email, full_name: parsed.user_metadata?.full_name || 'Authenticated User', role: 'user' });
+    if (isSupabaseConfigured()) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          const profile = await fetchUserProfile(session.user.id);
+          setUserProfile(profile);
         } else {
           setUser(null);
           setUserProfile(null);
         }
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      });
 
-    return () => {
-      subscription?.unsubscribe();
-    };
+      return () => {
+        subscription?.unsubscribe();
+      };
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const login = async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      setUser(data.user);
-      const profile = await fetchUserProfile(data.user.id);
-      setUserProfile(profile);
-      return data.user;
-    } catch (err) {
-      if (email && password) {
-        const sessionUser = {
-          id: `usr_${Date.now()}`,
-          email: email,
-          user_metadata: { full_name: email.split('@')[0] }
-        };
-        sessionStorage.setItem('riskguard_auth_user', JSON.stringify(sessionUser));
-        setUser(sessionUser);
-        setUserProfile({ id: sessionUser.id, email: sessionUser.email, full_name: sessionUser.user_metadata.full_name, role: 'user' });
-        return sessionUser;
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        setUser(data.user);
+        const profile = await fetchUserProfile(data.user.id);
+        setUserProfile(profile);
+        return data.user;
+      } catch (err) {
+        throw new Error('Incorrect email or password.');
       }
-      throw new Error('Incorrect email or password.');
+    } else {
+      const sessionUser = {
+        id: `usr_${Date.now()}`,
+        email: email || 'neelkore25@gmail.com',
+        user_metadata: { full_name: email ? email.split('@')[0] : 'Neel Kore' }
+      };
+      sessionStorage.setItem('riskguard_auth_user', JSON.stringify(sessionUser));
+      setUser(sessionUser);
+      setUserProfile({ id: sessionUser.id, email: sessionUser.email, full_name: sessionUser.user_metadata.full_name, role: 'user' });
+      return sessionUser;
     }
   };
 
   const googleLogin = async () => {
-    const redirectUrl = window.location.origin + window.location.pathname;
-    try {
+    if (isSupabaseConfigured()) {
+      const redirectUrl = window.location.origin + window.location.pathname;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -114,7 +117,7 @@ export function AuthProvider({ children }) {
       });
       if (error) throw error;
       return data;
-    } catch (err) {
+    } else {
       const googleUser = {
         id: 'usr_google_auth',
         email: 'user@gmail.com',
@@ -128,24 +131,28 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (email, password, fullName) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName
+            }
           }
+        });
+        if (error) throw error;
+        setUser(data.user);
+        if (data.user) {
+          const profile = await fetchUserProfile(data.user.id);
+          setUserProfile(profile);
         }
-      });
-      if (error) throw error;
-      setUser(data.user);
-      if (data.user) {
-        const profile = await fetchUserProfile(data.user.id);
-        setUserProfile(profile);
+        return data.user;
+      } catch (err) {
+        throw err;
       }
-      return data.user;
-    } catch (err) {
+    } else {
       const sessionUser = {
         id: `usr_${Date.now()}`,
         email: email,
@@ -159,24 +166,26 @@ export function AuthProvider({ children }) {
   };
 
   const resetPassword = async (email) => {
-    try {
+    if (isSupabaseConfigured()) {
       const redirectUrl = window.location.origin + window.location.pathname + '#/login';
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl
       });
       if (error) throw error;
       return data;
-    } catch (err) {
+    } else {
       return { message: 'Password reset link sent.' };
     }
   };
 
   const logout = async () => {
     sessionStorage.removeItem('riskguard_auth_user');
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      // ignore
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        // ignore
+      }
     }
     setUser(null);
     setUserProfile(null);
