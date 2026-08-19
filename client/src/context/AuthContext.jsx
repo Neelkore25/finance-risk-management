@@ -3,12 +3,11 @@ import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 
 const AuthContext = createContext();
 
-// Helper to access Local User Database for strict registration & authentication
+// Helper to access Local User Database for strict registration & instant fallback authentication
 function getUsersDatabase() {
   try {
     const raw = localStorage.getItem('riskguard_users_db');
     if (!raw) {
-      // Initial Seed Database
       const seed = [
         {
           id: 'usr_seed_1',
@@ -71,8 +70,20 @@ export function AuthProvider({ children }) {
             const profile = await fetchUserProfile(session.user.id);
             setUserProfile(profile);
           } else {
-            setUser(null);
-            setUserProfile(null);
+            const savedUser = sessionStorage.getItem('riskguard_auth_user');
+            if (savedUser) {
+              const parsed = JSON.parse(savedUser);
+              setUser(parsed);
+              setUserProfile({
+                id: parsed.id,
+                email: parsed.email,
+                full_name: parsed.user_metadata?.full_name || 'Authenticated User',
+                role: parsed.role || 'user'
+              });
+            } else {
+              setUser(null);
+              setUserProfile(null);
+            }
           }
         } else {
           const savedUser = sessionStorage.getItem('riskguard_auth_user');
@@ -106,8 +117,11 @@ export function AuthProvider({ children }) {
           const profile = await fetchUserProfile(session.user.id);
           setUserProfile(profile);
         } else {
-          setUser(null);
-          setUserProfile(null);
+          const savedUser = sessionStorage.getItem('riskguard_auth_user');
+          if (!savedUser) {
+            setUser(null);
+            setUserProfile(null);
+          }
         }
         setLoading(false);
       });
@@ -132,10 +146,25 @@ export function AuthProvider({ children }) {
         setUserProfile(profile);
         return data.user;
       } catch (err) {
-        throw new Error('Incorrect email or password.');
+        // Fallback: Check local database registry if Supabase returns email confirmation or invalid credential errors
+        const db = getUsersDatabase();
+        const existingUser = db.find(u => u.email.toLowerCase() === cleanEmail);
+
+        if (existingUser && existingUser.password_hash === password) {
+          const sessionUser = {
+            id: existingUser.id,
+            email: existingUser.email,
+            role: existingUser.role,
+            user_metadata: { full_name: existingUser.full_name }
+          };
+          sessionStorage.setItem('riskguard_auth_user', JSON.stringify(sessionUser));
+          setUser(sessionUser);
+          setUserProfile({ id: sessionUser.id, email: sessionUser.email, full_name: existingUser.full_name, role: existingUser.role });
+          return sessionUser;
+        }
+        throw new Error(err.message || 'Incorrect email or password.');
       }
     } else {
-      // Strict Database Authentication Verification
       const db = getUsersDatabase();
       const existingUser = db.find(u => u.email.toLowerCase() === cleanEmail);
 
@@ -204,17 +233,36 @@ export function AuthProvider({ children }) {
           }
         });
         if (error) throw error;
-        setUser(data.user);
-        if (data.user) {
-          const profile = await fetchUserProfile(data.user.id);
-          setUserProfile(profile);
+
+        // Register in local database so user can sign in immediately even if Supabase email confirmation is enabled
+        const db = getUsersDatabase();
+        if (!db.some(u => u.email.toLowerCase() === cleanEmail)) {
+          db.push({
+            id: data.user?.id || `usr_${Date.now()}`,
+            email: cleanEmail,
+            password_hash: password,
+            full_name: fullName || cleanEmail.split('@')[0],
+            role: 'user',
+            created_at: new Date().toISOString()
+          });
+          saveUsersDatabase(db);
         }
-        return data.user;
+
+        const sessionUser = {
+          id: data.user?.id || `usr_${Date.now()}`,
+          email: cleanEmail,
+          role: 'user',
+          user_metadata: { full_name: fullName || cleanEmail.split('@')[0] }
+        };
+
+        sessionStorage.setItem('riskguard_auth_user', JSON.stringify(sessionUser));
+        setUser(data.user || sessionUser);
+        setUserProfile({ id: sessionUser.id, email: sessionUser.email, full_name: sessionUser.user_metadata.full_name, role: 'user' });
+        return data.user || sessionUser;
       } catch (err) {
         throw err;
       }
     } else {
-      // Strict Database Registration Verification
       const db = getUsersDatabase();
       const existingUser = db.find(u => u.email.toLowerCase() === cleanEmail);
 
