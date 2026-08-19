@@ -41,7 +41,7 @@ export function Login() {
 
   const showToastMsg = (msg, type = 'ok') => {
     setToast({ show: true, msg, type });
-    setTimeout(() => setToast({ show: false, msg: '', type: 'ok' }), 3200);
+    setTimeout(() => setToast({ show: false, msg: '', type: 'ok' }), 4000);
   };
 
   // Password Security Meter calculation
@@ -87,11 +87,11 @@ export function Login() {
     setLoginLoading(true);
     try {
       await login(loginEmail.trim(), loginPassword);
-      showToastMsg('Signed in — redirecting to your dashboard…', 'ok');
+      showToastMsg('Signed in successfully — redirecting to dashboard...', 'ok');
       setTimeout(() => navigate('/dashboard'), 600);
     } catch (err) {
-      setLoginEmailErr('Incorrect email or password.');
-      setLoginPasswordErr('Incorrect email or password.');
+      setLoginEmailErr(err.message || 'Incorrect email or password.');
+      setLoginPasswordErr(err.message || 'Incorrect email or password.');
       showToastMsg(err.message || 'Incorrect email or password.', 'error');
     } finally {
       setLoginLoading(false);
@@ -122,11 +122,23 @@ export function Login() {
 
     setRegLoading(true);
     try {
-      await register(regEmail.trim(), regPassword, regName.trim());
-      showToastMsg('Account created — signing you in...', 'ok');
-      setTimeout(() => navigate('/dashboard'), 600);
+      const data = await register(regEmail.trim(), regPassword, regName.trim());
+
+      // Pre-fill login email with newly registered address & switch to Sign In pane
+      setLoginEmail(regEmail.trim());
+      setRegPassword('');
+      setRegConfirm('');
+      setRegName('');
+      setActiveTab('login');
+
+      // Display registration feedback message (handling optional email confirmation)
+      if (data?.user && (!data?.session || data?.user?.identities?.length === 0)) {
+        showToastMsg('Registration successful! Please check your email to confirm your account, then sign in.', 'ok');
+      } else {
+        showToastMsg('Registration successful. Please sign in with your email and password.', 'ok');
+      }
     } catch (err) {
-      setRegEmailErr(err.message || 'This email is already registered.');
+      setRegEmailErr(err.message || 'Registration failed.');
       showToastMsg(err.message || 'Registration failed.', 'error');
     } finally {
       setRegLoading(false);

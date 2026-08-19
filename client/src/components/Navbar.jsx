@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Menu, Sun, Moon, LogOut, User as UserIcon, Bell } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut } from 'lucide-react';
 
 export function Navbar({ setMobileOpen }) {
-  const { user, logout } = useAuth();
+  const { user, userProfile, displayName, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const nameToDisplay = displayName || userProfile?.full_name || user?.user_metadata?.full_name || (user?.email ? user.email.split('@')[0] : 'User');
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 flex items-center justify-between opacity-100 shadow-sm">
@@ -46,18 +48,18 @@ export function Navbar({ setMobileOpen }) {
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors opacity-100"
           >
             <div className="w-7 h-7 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-xs">
-              {user?.fullName?.charAt(0) || 'U'}
+              {nameToDisplay.charAt(0).toUpperCase()}
             </div>
             <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 hidden md:inline">
-              {user?.fullName || 'User'}
+              {nameToDisplay}
             </span>
           </button>
 
-          {/* Solid 100% Opaque Dropdown - Mirror Rule */}
+          {/* Opaque Dropdown Menu */}
           {dropdownOpen && (
             <div className="opaque-dropdown">
               <div className="p-3 border-b border-slate-200 dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-900 dark:text-white">{user?.fullName}</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">{nameToDisplay}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
               </div>
               <div className="py-1">
