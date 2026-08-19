@@ -49,25 +49,25 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
       {/* Mobile Backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-slate-950/80 dark:bg-[#07080D]/90 z-40 lg:hidden backdrop-blur-md"
+          className="fixed inset-0 bg-[#0F172A]/70 dark:bg-[#0B0F17]/90 z-40 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* DUAL-THEME SIDEBAR */}
+      {/* MATTE LOW-GLARE SIDEBAR */}
       <aside
-        className={`fixed top-0 left-0 bottom-0 w-64 bg-white dark:bg-[#0D111A] border-r border-slate-200 dark:border-[#00F5FF]/20 z-50 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 bottom-0 w-64 bg-[#F8FAFC] dark:bg-[#111827] border-r border-[#CBD5E1] dark:border-[#1F2937] z-50 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         } opacity-100 flex flex-col font-sans shadow-sm dark:shadow-none`}
       >
         {/* Brand Header */}
-        <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-[#00F5FF]/20 bg-slate-50 dark:bg-[#07080D]">
-          <Shield className="w-8 h-8 text-sky-600 dark:text-[#00F5FF] mr-3 stroke-[2.5] dark:drop-shadow-[0_0_8px_rgba(0,245,255,0.8)]" />
+        <div className="h-16 flex items-center px-6 border-b border-[#CBD5E1] dark:border-[#1F2937] bg-[#EDF2F7] dark:bg-[#0B0F17]">
+          <Shield className="w-8 h-8 text-[#2563EB] dark:text-[#0EA5E9] mr-3 stroke-[2.5]" />
           <div>
-            <h1 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-wider leading-tight font-display">
-              FINANCE <span className="text-sky-600 dark:text-[#00F5FF]">RISK ANALYTICS</span>
+            <h1 className="font-extrabold text-sm text-[#0F172A] dark:text-[#F3F4F6] tracking-wider leading-tight font-display">
+              FINANCE <span className="text-[#2563EB] dark:text-[#0EA5E9]">RISK ANALYTICS</span>
             </h1>
-            <p className="text-[9px] text-slate-500 dark:text-[#A0AEC0] font-semibold tracking-widest uppercase mt-0.5">
+            <p className="text-[9px] text-[#475569] dark:text-[#9CA3AF] font-semibold tracking-widest uppercase mt-0.5">
               Quantitative Analytics Suite
             </p>
           </div>
@@ -85,8 +85,8 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
                 className={({ isActive }) =>
                   `flex items-center px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 opacity-100 ${
                     isActive
-                      ? 'bg-sky-600 text-white shadow-sm dark:bg-[#00F5FF]/10 dark:text-[#00F5FF] dark:border dark:border-[#00F5FF]/40 dark:shadow-[0_0_15px_rgba(0,245,255,0.25)] translate-x-1'
-                      : 'text-slate-600 dark:text-[#A0AEC0] hover:bg-slate-100 dark:hover:bg-[#1E293B]/50 hover:text-slate-900 dark:hover:text-white border border-transparent'
+                      ? 'bg-[#2563EB] text-white shadow-sm dark:bg-[#0EA5E9]/20 dark:text-[#0EA5E9] dark:border dark:border-[#0EA5E9]/40 translate-x-1'
+                      : 'text-[#475569] dark:text-[#9CA3AF] hover:bg-[#EDF2F7] dark:hover:bg-[#1E293B]/50 hover:text-[#0F172A] dark:hover:text-[#F3F4F6] border border-transparent'
                   }`
                 }
               >
@@ -98,15 +98,15 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
         </nav>
 
         {/* Footer info */}
-        <div className="p-4 border-t border-slate-200 dark:border-[#00F5FF]/20 bg-slate-50 dark:bg-[#07080D]">
-          <p className="text-[10px] text-slate-500 dark:text-[#A0AEC0] font-medium">
+        <div className="p-4 border-t border-[#CBD5E1] dark:border-[#1F2937] bg-[#EDF2F7] dark:bg-[#0B0F17]">
+          <p className="text-[10px] text-[#475569] dark:text-[#9CA3AF] font-medium">
             Educational Risk Analysis Model
           </p>
           <a
             href="https://neelkore25.github.io/finance-risk-management/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] font-bold text-sky-600 dark:text-[#00F5FF] hover:underline block mt-1 dark:drop-shadow-[0_0_6px_rgba(0,245,255,0.6)]"
+            className="text-[10px] font-bold text-[#2563EB] dark:text-[#0EA5E9] hover:underline block mt-1"
           >
             Live Site: neelkore25.github.io
           </a>
