@@ -1,4 +1,6 @@
 import os
+import re
+import json
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -79,6 +81,13 @@ class AssistantRequest(BaseModel):
     prompt: str
     user_context: Optional[Dict[str, Any]] = {}
 
+class UnifiedAssistantRequest(BaseModel):
+    prompt: str
+    mode: str = "chat"  # "chat" or "parse_step"
+    step_key: Optional[str] = None
+    user_context: Optional[Dict[str, Any]] = {}
+    user_id: Optional[str] = "guest"
+
 SYSTEM_INSTRUCTION = """
 You are an expert Financial Risk AI Assistant embedded in a financial analytics platform.
 Your response guidelines:
@@ -87,6 +96,33 @@ Your response guidelines:
 3. Keep responses structured using bullet points, short clear sentences, and lightweight bold headers (**Concept**).
 4. Format currency figures in Indian Rupees (₹) when referencing user portfolio context.
 """
+
+def parse_step_value(text: str, step_key: str = None):
+    raw_str = text.lower().strip()
+    
+    # 1. Handle shorthand patterns: 75k, 80.5k
+    k_match = re.search(r'(\d+(?:\.\d+)?)\s*k\b', raw_str)
+    if k_match:
+        val = int(round(float(k_match[1]) * 1000))
+        return {"valid": True, "cleaned_value": val, "detected_typo": f"Parsed '{k_match[0]}' as ₹{val:,}"}
+
+    # 2. Handle lakh patterns: 1.5 lakh, 2 lakhs
+    lakh_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:lakh|lakhs|l)\b', raw_str)
+    if lakh_match:
+        val = int(round(float(lakh_match[1]) * 100000))
+        return {"valid": True, "cleaned_value": val, "detected_typo": f"Parsed '{lakh_match[0]}' as ₹{val:,}"}
+
+    # 3. Handle raw digits
+    digits = re.sub(r'[^\d.]', '', raw_str)
+    if digits:
+        try:
+            val = int(round(float(digits)))
+            if val >= 0:
+                return {"valid": True, "cleaned_value": val, "detected_typo": None}
+        except ValueError:
+            pass
+
+    return {"valid": False, "cleaned_value": None, "detected_typo": "Could not parse amount"}
 
 def generate_structured_risk_response(query: str, context: dict) -> str:
     q = query.lower().strip()
@@ -110,16 +146,33 @@ def health_check():
         "engines": ["Pandas", "NumPy", "Scikit-Learn ML", "SciPy VaR", "Monte Carlo GBM", "Gemini 2.5 Flash LLM"]
     }
 
-@app.post("/api/ai/chat")
-async def chat_assistant(req: AssistantRequest):
+@app.post("/api/ai/assistant")
+async def unified_assistant(req: UnifiedAssistantRequest):
     try:
         q = req.prompt.strip()
         if not q:
-            return {"status": "success", "reply": "Please provide a valid question or prompt."}
+            return {"status": "error", "message": "Empty prompt."}
 
+        # MODE A: PARSE STEP VALUE (Typo-resilient extraction)
+        if req.mode == "parse_step":
+            res = parse_step_value(q, req.step_key)
+            if not res["valid"] and (genai_client or genai_legacy_model):
+                try:
+                    prompt = f"Extract only the numeric value in Indian Rupees from: '{q}' for {req.step_key}. Return ONLY valid JSON: {{\"valid\": true, \"cleaned_value\": 75000, \"detected_typo\": \"Parsed text as number\"}}"
+                    if genai_client:
+                        llm_out = genai_client.models.generate_content(model="gemini-2.5-flash", contents=prompt).text
+                    elif genai_legacy_model:
+                        llm_out = genai_legacy_model.generate_content(prompt).text
+                    json_match = re.search(r'\{.*\}', llm_out, re.DOTALL)
+                    if json_match:
+                        return json.loads(json_match.group())
+                except Exception:
+                    pass
+            return res
+
+        # MODE B: CHAT / DEFINITION QUESTION
         full_prompt = f"{SYSTEM_INSTRUCTION}\n\nUser Context: {req.user_context}\n\nUser Question: {req.prompt}"
 
-        # 1. Try modern google-genai SDK
         if genai_client:
             try:
                 response = genai_client.models.generate_content(
@@ -137,7 +190,6 @@ async def chat_assistant(req: AssistantRequest):
                 except Exception:
                     pass
 
-        # 2. Try legacy google-generativeai SDK
         if genai_legacy_model:
             try:
                 response = genai_legacy_model.generate_content(full_prompt)
@@ -145,14 +197,20 @@ async def chat_assistant(req: AssistantRequest):
             except Exception:
                 pass
 
-        # 3. Dynamic Structured Fallback Engine
         reply = generate_structured_risk_response(q, req.user_context)
-        return {
-            "status": "success",
-            "reply": reply
-        }
+        return {"status": "success", "reply": reply}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ai/chat")
+async def chat_assistant(req: AssistantRequest):
+    unified_req = UnifiedAssistantRequest(
+        prompt=req.prompt,
+        mode="chat",
+        user_context=req.user_context,
+        user_id=req.user_id
+    )
+    return await unified_assistant(unified_req)
 
 @app.post("/api/v1/risk/score")
 def calculate_risk_score(req: RiskScoreRequest):

@@ -3,19 +3,16 @@ import { Bot, Send, X, Sparkles, RefreshCw, Wand2 } from 'lucide-react';
 import { apiFetch, formatINR } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 
-function extractNumberFromText(text) {
+function extractNumberFromTextLocal(text) {
   if (!text) return null;
   const str = text.toLowerCase().trim();
   
-  // Handle '80k', '80.5k'
   const kMatch = str.match(/(\d+(?:\.\d+)?)\s*k\b/);
   if (kMatch) return Math.round(parseFloat(kMatch[1]) * 1000);
 
-  // Handle '1 lakh', '1.5 lakhs', '1.5l'
   const lakhMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:lakh|lakhs|l)\b/);
   if (lakhMatch) return Math.round(parseFloat(lakhMatch[1]) * 100000);
 
-  // Extract raw digits
   const cleaned = str.replace(/[^\d.]/g, '');
   if (cleaned) {
     const val = parseFloat(cleaned);
@@ -57,28 +54,35 @@ function formatMessageContent(text) {
   });
 }
 
+const STEP_KEYS = [
+  { step: 1, key: 'monthly_income', label: 'Net Monthly Income', prompt: 'What is your Net Monthly Income? (e.g. 75000, 80k, 1 Lakh)' },
+  { step: 2, key: 'monthly_debt', label: 'Monthly Debt Service / EMIs', prompt: 'What are your total Monthly Debt Payments / EMIs? (e.g. home loan, credit card minimums)' },
+  { step: 3, key: 'essential_expenses', label: 'Essential Living Expenses', prompt: 'What are your Essential Monthly Expenses? (rent, groceries, electricity)' },
+  { step: 4, key: 'discretionary_expenses', label: 'Discretionary Lifestyle Expenses', prompt: 'What are your Discretionary Lifestyle Expenses? (dining out, shopping, hobbies)' },
+  { step: 5, key: 'liquid_savings', label: 'Total Liquid Savings & Emergency Fund', prompt: 'What is your Total Liquid Savings & Emergency Reserve?' }
+];
+
 export function AIRiskAssistant() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       sender: 'ai',
-      text: "Hello! I am your AI Risk Assistant. I can help set up your profile step-by-step, answer any financial risk questions, or analyze your portfolio!"
+      text: "👋 Hi! I can answer any financial definition or help you fill out your dashboard step-by-step. What would you like to do?"
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [contextData, setContextData] = useState(null);
 
-  // Guided Setup Wizard State
-  const [wizardStep, setWizardStep] = useState(0); // 0=idle, 1=income, 2=essential_exp, 3=discretionary_exp, 4=debt_emi, 5=savings
+  // Dual-Mode Guided Setup Wizard State
+  const [wizardStep, setWizardStep] = useState(0); // 0=idle, 1=income, 2=debt, 3=essential, 4=discretionary, 5=savings
   const [wizardData, setWizardData] = useState({
-    monthly_net_income: 75000,
+    monthly_income: 75000,
+    monthly_debt: 12000,
     essential_expenses: 30000,
     discretionary_expenses: 15000,
-    monthly_debt_payments: 12000,
-    liquid_savings: 100000,
-    emergency_fund: 180000
+    liquid_savings: 100000
   });
 
   const chatEndRef = useRef(null);
@@ -109,8 +113,21 @@ export function AIRiskAssistant() {
 
   const startSetupWizard = () => {
     setWizardStep(1);
-    const msg = "👋 **Interactive Profile Setup Wizard**\n\nI will help you feed all your data into the dashboard step-by-step!\n\n**Step 1 of 5**: What is your **Net Monthly Income**? (e.g. 75000, 80k, 1 Lakh)";
+    const msg = `🪄 **Guided Onboarding Setup**\n\nI will guide you step-by-step through 5 fields to calculate your risk scores!\n\n**Step 1 of 5**: ${STEP_KEYS[0].prompt}`;
     setMessages(prev => [...prev, { sender: 'ai', text: msg }]);
+  };
+
+  const isQuestionQuery = (text) => {
+    const q = text.toLowerCase().trim();
+    return (
+      q.includes('what is') ||
+      q.includes('explain') ||
+      q.includes('meaning') ||
+      q.includes('how to') ||
+      q.includes('why') ||
+      q.includes('about') ||
+      q.endsWith('?')
+    );
   };
 
   const generateLocalAIResponse = (userQuery) => {
@@ -120,7 +137,7 @@ export function AIRiskAssistant() {
     const port = contextData?.portfolio?.metrics || {};
 
     if (q.includes('monthly debt service') || q.includes('debt service') || q.includes('monthly debt')) {
-      return `💳 **Monthly Debt Service** is the total amount of money you must pay each month toward all active debts and loans.\n\n• **What it includes**: Credit card minimum payments, home loan EMIs, personal loans, and car loans.\n• **Why it matters**: Lenders evaluate this to calculate your Debt-to-Income (DTI) ratio to verify if you can comfortably afford credit.\n• **Best Practice**: Keep total monthly debt payments below 36% of net monthly income.`;
+      return `💳 **Monthly Debt Service** is the total amount of money you must pay each month toward all active debts and loans (like credit card EMIs, car loans, and home mortgages).\n\n• **Why it matters**: Lenders evaluate this to calculate your Debt-to-Income (DTI) ratio to verify if you can comfortably afford credit.\n• **Best Practice**: Keep total monthly debt payments below 36% of net monthly income.`;
     }
 
     if (q.includes('what is var') || q.includes('value at risk') || q.includes('explain var')) {
@@ -135,27 +152,11 @@ export function AIRiskAssistant() {
       return `💳 **Debt-to-Income (DTI) Ratio** compares your total monthly debt payments against your monthly net income.\n\n• **Healthy Goal**: 36% or lower.\n• **How to Reduce It**: Pay off high-interest debts first or consolidate small loans into a lower-rate EMI.\n• **Your Current DTI**: **${p.dtiRatio || 16}%**.`;
     }
 
-    if (q.includes('sharpe') || q.includes('meaning of sharpe')) {
-      return `📊 **Sharpe Ratio** measures how much return an investment generates for the amount of risk taken.\n\n• **Higher is better**: A Sharpe Ratio above 1.0 indicates good risk-adjusted returns.\n• **Your Portfolio Sharpe**: **${port.sharpeRatio || 1.85}**.`;
-    }
-
-    if (q.includes('liquid savings') || q.includes('emergency fund') || q.includes('savings')) {
-      return `💰 **Emergency Savings** represent money held in easily accessible accounts for unexpected expenses or sudden income loss.\n\n• **Rule of Thumb**: Keep 3 to 6 months of living expenses saved.\n• **Your Current Reserve**: **${p.emergencyCoverageMonths || 6} Months** of coverage.`;
-    }
-
-    if (q.includes('essential expense') || q.includes('discretionary')) {
-      return `🛒 **Essential vs Discretionary Expenses**:\n\n• **Essential Expenses**: Must-pay costs like rent, groceries, electricity bills, and medical needs.\n• **Discretionary Expenses**: Optional lifestyle spending like dining out, hobbies, and entertainment.`;
-    }
-
     if (q.includes('what is this project') || q.includes('about app') || q.includes('features')) {
       return `🛡️ **Finance Risk Analytics Platform** is a personal financial risk workspace that helps you track debt safety (DTI), evaluate credit default risk, analyze portfolio risk (VaR), and test future financial scenarios.`;
     }
 
-    if (q.includes('my risk') || q.includes('analyze my') || q.includes('overall') || q.includes('score')) {
-      return `📊 **Your Personal Financial Risk Summary**:\n\n• **Overall Risk Score**: **${contextData?.personal?.overallScore || 34}/100** (${contextData?.personal?.overallLevel || 'Low Risk'})\n• **Monthly Net Income**: ${formatINR(p.monthlyIncome || 75000)}\n• **Net Cash Flow**: ${formatINR(p.netCashFlow || 18000)}\n• **Debt-to-Income Ratio**: ${p.dtiRatio || 16}%\n• **Emergency Fund**: ${p.emergencyCoverageMonths || 6} Months`;
-    }
-
-    return `🤖 **AI Risk Assistant**:\nI am ready to help you! You can:\n\n1. **Setup Data**: Click **"🪄 Setup Profile"** to enter your financial data step-by-step.\n2. **Definitions**: Ask "What is monthly debt service?", "What is VaR?", "Explain Credit Risk"\n3. **Portfolio Analysis**: Ask "Analyze my financial risk score"`;
+    return `🤖 **AI Risk Assistant**:\nI am ready to help you! You can:\n\n1. **Setup Data**: Click **"🪄 Help Me Setup Profile"** to enter your financial data step-by-step.\n2. **Definitions**: Ask "What is Monthly Debt Service?", "What is VaR?", "Explain Credit Risk Score"`
   };
 
   const handleSend = async (textToSend) => {
@@ -163,14 +164,15 @@ export function AIRiskAssistant() {
     if (!query.trim()) return;
 
     const lowerQuery = query.toLowerCase().trim();
+    const apiBaseUrl = import.meta.env.VITE_ANALYTICS_API_URL || 'http://localhost:8000';
 
-    // Check if user wants to trigger Guided Setup Wizard
+    // 1. Explicit Trigger for Guided Setup Wizard
     if (
       lowerQuery.includes('setup profile') ||
       lowerQuery.includes('fill data') ||
       lowerQuery.includes('put data') ||
       lowerQuery.includes('step by step') ||
-      lowerQuery.includes('help me put')
+      lowerQuery.includes('help me setup')
     ) {
       setMessages(prev => [...prev, { sender: 'user', text: query }]);
       setInput('');
@@ -178,124 +180,162 @@ export function AIRiskAssistant() {
       return;
     }
 
-    // Process Wizard Step Progression
+    // 2. Non-Destructive Question Answer Mode B (Interruption Handling during Wizard or Idle)
+    if (isQuestionQuery(query) && wizardStep > 0) {
+      const newMsgs = [...messages, { sender: 'user', text: query }];
+      setMessages(newMsgs);
+      setInput('');
+      setLoading(true);
+
+      let reply = '';
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/ai/assistant`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: query,
+            mode: 'chat',
+            user_context: { platform: 'Finance Risk Analytics Platform' }
+          })
+        });
+        const data = await res.json();
+        reply = data.reply || data.response || generateLocalAIResponse(query);
+      } catch (err) {
+        reply = generateLocalAIResponse(query);
+      }
+
+      const stepPrompt = STEP_KEYS[wizardStep - 1].prompt;
+      setMessages([
+        ...newMsgs,
+        { sender: 'ai', text: reply },
+        { sender: 'ai', text: `▶️ **Resuming Step ${wizardStep} of 5**: ${stepPrompt}` }
+      ]);
+      setLoading(false);
+      return;
+    }
+
+    // 3. Guided Wizard Mode A (Step Value Parsing)
     if (wizardStep > 0) {
       const newMsgs = [...messages, { sender: 'user', text: query }];
       setMessages(newMsgs);
       setInput('');
-
-      const extractedVal = extractNumberFromText(query);
-      if (extractedVal === null) {
-        setMessages([...newMsgs, {
-          sender: 'ai',
-          text: "I couldn't detect a valid amount from your input. Please enter a number (e.g. 75000, 80k, or 1 Lakh)."
-        }]);
-        return;
-      }
-
       setLoading(true);
-      if (wizardStep === 1) {
-        setWizardData(prev => ({ ...prev, monthly_net_income: extractedVal }));
-        setWizardStep(2);
+
+      const currentStepObj = STEP_KEYS[wizardStep - 1];
+      let cleanedVal = null;
+      let typoNote = null;
+
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/ai/assistant`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: query,
+            mode: 'parse_step',
+            step_key: currentStepObj.key
+          })
+        });
+        const data = await res.json();
+        if (data.valid && data.cleaned_value !== null) {
+          cleanedVal = data.cleaned_value;
+          typoNote = data.detected_typo;
+        }
+      } catch (err) {}
+
+      if (cleanedVal === null) {
+        cleanedVal = extractNumberFromTextLocal(query);
+      }
+
+      if (cleanedVal === null) {
         setMessages([...newMsgs, {
           sender: 'ai',
-          text: `Got it! Monthly Income set to **${formatINR(extractedVal)}**.\n\n**Step 2 of 5**: What are your **Essential Living Expenses** (rent, groceries, bills)?`
+          text: "I couldn't detect a valid amount. Please enter a value like 75000, 80k, or 1 Lakh."
         }]);
         setLoading(false);
         return;
       }
 
-      if (wizardStep === 2) {
-        setWizardData(prev => ({ ...prev, essential_expenses: extractedVal }));
-        setWizardStep(3);
-        setMessages([...newMsgs, {
-          sender: 'ai',
-          text: `Great! Essential Expenses set to **${formatINR(extractedVal)}**.\n\n**Step 3 of 5**: What are your **Discretionary Lifestyle Expenses** (dining out, hobbies)?`
-        }]);
+      const updatedWizardData = { ...wizardData, [currentStepObj.key]: cleanedVal };
+      setWizardData(updatedWizardData);
+
+      let ackText = `Got it! **${currentStepObj.label}** set to **${formatINR(cleanedVal)}**.`;
+      if (typoNote) {
+        ackText += ` (${typoNote})`;
+      }
+
+      if (wizardStep < 5) {
+        const nextStepObj = STEP_KEYS[wizardStep];
+        setWizardStep(wizardStep + 1);
+        setMessages([
+          ...newMsgs,
+          {
+            sender: 'ai',
+            text: `${ackText}\n\n**Step ${wizardStep + 1} of 5**: ${nextStepObj.prompt}`
+          }
+        ]);
         setLoading(false);
         return;
       }
 
-      if (wizardStep === 3) {
-        setWizardData(prev => ({ ...prev, discretionary_expenses: extractedVal }));
-        setWizardStep(4);
-        setMessages([...newMsgs, {
-          sender: 'ai',
-          text: `Noted! Discretionary Expenses set to **${formatINR(extractedVal)}**.\n\n**Step 4 of 5**: What are your total **Monthly Debt Payments / EMIs** (home loan, car loan, credit card)?`
-        }]);
-        setLoading(false);
-        return;
-      }
-
-      if (wizardStep === 4) {
-        setWizardData(prev => ({ ...prev, monthly_debt_payments: extractedVal }));
-        setWizardStep(5);
-        setMessages([...newMsgs, {
-          sender: 'ai',
-          text: `Got it! Monthly Debt Payments set to **${formatINR(extractedVal)}**.\n\n**Step 5 of 5**: What is your **Total Liquid Savings & Emergency Reserve**?`
-        }]);
-        setLoading(false);
-        return;
-      }
-
-      if (wizardStep === 5) {
-        const finalData = {
-          ...wizardData,
-          liquid_savings: extractedVal,
-          emergency_fund: extractedVal
+      // Step 5 Complete -> Save Profile to Supabase & Auto-Sync
+      try {
+        const payload = {
+          monthly_net_income: updatedWizardData.monthly_income,
+          monthly_debt_payments: updatedWizardData.monthly_debt,
+          essential_expenses: updatedWizardData.essential_expenses,
+          discretionary_expenses: updatedWizardData.discretionary_expenses,
+          liquid_savings: updatedWizardData.liquid_savings,
+          emergency_fund: updatedWizardData.liquid_savings
         };
 
-        try {
-          await apiFetch('/profile', {
-            method: 'PUT',
-            body: JSON.stringify(finalData)
-          });
-          window.dispatchEvent(new CustomEvent('profileUpdated'));
-        } catch (err) {}
+        await apiFetch('/profile', {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+      } catch (err) {}
 
-        setWizardStep(0);
-        setMessages([...newMsgs, {
+      setWizardStep(0);
+      setMessages([
+        ...newMsgs,
+        {
           sender: 'ai',
-          text: `🎉 **Financial Profile Successfully Configured & Synced to Dashboard!**\n\n• **Monthly Net Income**: ${formatINR(finalData.monthly_net_income)}\n• **Essential Expenses**: ${formatINR(finalData.essential_expenses)}\n• **Discretionary Expenses**: ${formatINR(finalData.discretionary_expenses)}\n• **Monthly Debt Service**: ${formatINR(finalData.monthly_debt_payments)}\n• **Liquid Savings**: ${formatINR(finalData.liquid_savings)}\n\nYour dashboard risk scores and risk indicators have been re-calculated in real time!`
-        }]);
-        setLoading(false);
-        return;
-      }
+          text: `🎉 **Financial Profile Successfully Configured & Synced!**\n\n• **Monthly Net Income**: ${formatINR(updatedWizardData.monthly_income)}\n• **Monthly Debt Service**: ${formatINR(updatedWizardData.monthly_debt)}\n• **Essential Expenses**: ${formatINR(updatedWizardData.essential_expenses)}\n• **Discretionary Expenses**: ${formatINR(updatedWizardData.discretionary_expenses)}\n• **Liquid Savings**: ${formatINR(updatedWizardData.liquid_savings)}\n\nYour live risk scorecards and dashboard metrics have been updated in real-time!`
+        }
+      ]);
+      setLoading(false);
+      return;
     }
 
-    // Standard General Question Answering
+    // 4. Standard QA / Definition Question Mode B
     const newMsgs = [...messages, { sender: 'user', text: query }];
     setMessages(newMsgs);
     setInput('');
     setLoading(true);
 
-    const apiBaseUrl = import.meta.env.VITE_ANALYTICS_API_URL || 'http://localhost:8000';
-
     try {
-      const res = await fetch(`${apiBaseUrl}/api/ai/chat`, {
+      const res = await fetch(`${apiBaseUrl}/api/ai/assistant`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: query,
-          user_id: user?.id || 'guest',
+          mode: 'chat',
           user_context: {
             platform: 'Finance Risk Analytics Platform',
             overallScore: contextData?.personal?.overallScore || 34,
-            dtiRatio: contextData?.personal?.metrics?.dtiRatio || 16,
-            netCashFlow: contextData?.personal?.metrics?.netCashFlow || 18000
+            dtiRatio: contextData?.personal?.metrics?.dtiRatio || 16
           }
         })
       });
 
       const data = await res.json();
-      if (data && data.reply) {
-        setMessages([...newMsgs, { sender: 'ai', text: data.reply }]);
+      if (data && (data.reply || data.response)) {
+        setMessages([...newMsgs, { sender: 'ai', text: data.reply || data.response }]);
         setLoading(false);
         return;
       }
     } catch (err) {}
 
-    // Dynamic Intelligent Fallback Response
     const localResponse = generateLocalAIResponse(query);
     setMessages([...newMsgs, { sender: 'ai', text: localResponse }]);
     setLoading(false);
@@ -347,7 +387,7 @@ export function AIRiskAssistant() {
               className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-indigo-600 text-white shadow-sm whitespace-nowrap hover:bg-indigo-500 transition-colors flex items-center gap-1"
             >
               <Wand2 className="w-3 h-3 text-amber-300" />
-              🪄 Setup Profile
+              🪄 Help Me Setup Profile
             </button>
             <button
               onClick={() => handleSend("What is Value at Risk (VaR)?")}
@@ -356,22 +396,16 @@ export function AIRiskAssistant() {
               📈 What is VaR?
             </button>
             <button
+              onClick={() => handleSend("What is Monthly Debt Service?")}
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap hover:bg-amber-200 transition-colors"
+            >
+              💳 What is Debt Service?
+            </button>
+            <button
               onClick={() => handleSend("Explain Credit Risk score")}
               className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap hover:bg-emerald-200 transition-colors"
             >
               🏦 Credit Risk
-            </button>
-            <button
-              onClick={() => handleSend("How to reduce EMI debt burden?")}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 whitespace-nowrap hover:bg-amber-200 transition-colors"
-            >
-              💳 Reduce Debt
-            </button>
-            <button
-              onClick={() => handleSend("Analyze My Current Financial Risk")}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 whitespace-nowrap hover:bg-purple-200 transition-colors"
-            >
-              📊 My Risk Score
             </button>
           </div>
 
@@ -421,8 +455,8 @@ export function AIRiskAssistant() {
               onChange={(e) => setInput(e.target.value)}
               placeholder={
                 wizardStep > 0
-                  ? `Step ${wizardStep} of 5: Enter amount (e.g. 75000, 80k, 1 Lakh)...`
-                  : "Ask any question or type 'setup profile'..."
+                  ? `Step ${wizardStep} of 5: Enter amount or ask a question...`
+                  : "Ask any definition or type 'help me setup profile'..."
               }
               className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500"
             />
