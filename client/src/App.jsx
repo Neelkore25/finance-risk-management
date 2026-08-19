@@ -25,6 +25,7 @@ import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Methodology } from './pages/Methodology';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { AntigravityShowcase } from './pages/AntigravityShowcase';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -66,6 +67,8 @@ function MainLayout() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/methodology" element={<Methodology />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/showcase" element={<AntigravityShowcase />} />
+            <Route path="/antigravity" element={<AntigravityShowcase />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

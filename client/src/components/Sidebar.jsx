@@ -17,7 +17,8 @@ import {
   Shield,
   Activity,
   BookOpen,
-  Lock
+  Lock,
+  Sparkles
 } from 'lucide-react';
 
 export function Sidebar({ mobileOpen, setMobileOpen }) {
@@ -37,6 +38,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
     { name: 'Risk History', path: '/risk-history', icon: History },
     { name: 'Reports & Exports', path: '/reports', icon: FileText },
     { name: 'Methodology', path: '/methodology', icon: BookOpen },
+    { name: 'Antigravity Showcase', path: '/showcase', icon: Sparkles },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
