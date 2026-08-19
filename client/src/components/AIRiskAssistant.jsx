@@ -47,6 +47,10 @@ export function AIRiskAssistant() {
     const cred = contextData?.credit || {};
     const port = contextData?.portfolio?.metrics || {};
 
+    if (q.includes('monthly debt service') || q.includes('debt service') || q.includes('monthly debt')) {
+      return `💳 **Monthly Debt Service Meaning**:\nThe total mandatory monthly sum spent on principal and interest payments across all existing debts, loans, and EMIs (such as mortgages, personal loans, auto loans, and credit card minimums).\n\n• **Formula**: Monthly Debt Service = Σ (Monthly Debt EMIs)\n• **Impact on Risk**: Used directly to compute your Debt-to-Income (DTI) ratio:\n\n$$\\text{DTI} = \\left(\\frac{\\text{Monthly Debt Service}}{\\text{Monthly Net Income}}\\right) \\times 100$$\n\n• **Benchmark**: Financial institutions recommend keeping total monthly debt service below 36% of net income.`;
+    }
+
     if (q.includes('what is var') || q.includes('value at risk') || q.includes('explain var')) {
       return `📈 **Value at Risk (VaR) Meaning**:\nA quantitative risk metric estimating the maximum expected financial loss in a portfolio over a specific time horizon (e.g., 1 day) at a given confidence level (e.g., 95% or 99%).\n\n• **Historical VaR**: Calculated from empirical asset return distributions.\n• **Parametric VaR**: Assumes normal Gaussian return distributions.\n• **Monte Carlo VaR**: Vectorized 10,000-path Geometric Brownian Motion simulation.`;
     }
@@ -63,6 +67,14 @@ export function AIRiskAssistant() {
       return `📊 **Sharpe Ratio Meaning**:\nA metric measuring risk-adjusted portfolio return relative to excess volatility.\n\n• **Formula**: Sharpe = (Portfolio Return - Risk Free Rate) / Portfolio Volatility\n• **Interpretation**: > 1.0 is Good, > 2.0 is Very Good, > 3.0 is Excellent.\n\nYour portfolio Sharpe Ratio is **${port.sharpeRatio || 1.85}**.`;
     }
 
+    if (q.includes('liquid savings') || q.includes('emergency fund') || q.includes('savings')) {
+      return `💰 **Liquid Savings & Emergency Reserves**:\nLiquid savings represent immediately accessible cash or high-liquidity assets stored to handle unforeseen financial shocks.\n\n• **Recommended Reserve**: 3 to 6 months of essential living expenses.\n• **Your Current Coverage**: **${p.emergencyCoverageMonths || 6} Months** of living expenses.`;
+    }
+
+    if (q.includes('essential expense') || q.includes('discretionary')) {
+      return `🛒 **Essential vs Discretionary Expenses**:\n• **Essential Expenses**: Non-negotiable living costs (rent, food, utility bills, healthcare, basic transport).\n• **Discretionary Expenses**: Optional lifestyle choices (entertainment, dining out, subscriptions).`;
+    }
+
     if (q.includes('what is this project') || q.includes('about app') || q.includes('features')) {
       return `🛡️ **Finance Risk Analytics Platform**:\nAn educational quantitative financial risk management system providing personal risk scoring, Debt-to-Income (DTI) analysis, Portfolio Value at Risk (VaR), Scikit-Learn Credit Risk ML, and What-If scenario simulations.`;
     }
@@ -71,7 +83,7 @@ export function AIRiskAssistant() {
       return `📊 **Your Personal Risk Profile Summary**:\n• **Overall Risk Score**: **${contextData?.personal?.overallScore || 34}/100** (${contextData?.personal?.overallLevel || 'Low Risk'})\n• **Monthly Net Income**: ${formatINR(p.monthlyIncome || 75000)}\n• **Net Cash Flow**: ${formatINR(p.netCashFlow || 18000)}\n• **Debt-to-Income (DTI)**: ${p.dtiRatio || 16}%\n• **Emergency Reserve**: ${p.emergencyCoverageMonths || 6} Months`;
     }
 
-    return `🤖 **AI Risk Assistant**:\nI can answer questions about:\n\n1. **Definitions**: Ask "What is VaR?", "Explain Credit Risk score", "What is Sharpe Ratio?"\n2. **Platform Concepts**: Ask "What is this project?", "What are the features?"\n3. **Debt Strategy**: Ask "How to reduce EMI debt burden?"\n4. **Personal Portfolio**: Ask "Analyze my financial risk score"`;
+    return `🤖 **AI Risk Assistant**:\nI can answer financial risk questions such as:\n\n1. **Debt & Income**: Ask "What is meant by monthly debt service?", "Explain DTI ratio"\n2. **Portfolio Risk**: Ask "What is VaR?", "What is Sharpe Ratio?"\n3. **Credit ML**: Ask "Explain Credit Risk score"\n4. **Personal Profile**: Ask "Analyze my financial risk score"`;
   };
 
   const handleSend = async (textToSend) => {
@@ -90,8 +102,8 @@ export function AIRiskAssistant() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: user?.id || 'guest',
           prompt: query,
+          user_id: user?.id || 'guest',
           user_context: {
             platform: 'Finance Risk Analytics Platform',
             overallScore: contextData?.personal?.overallScore || 34,
@@ -101,19 +113,20 @@ export function AIRiskAssistant() {
         })
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json();
+      if (data && data.reply) {
         setMessages([...newMsgs, { sender: 'ai', text: data.reply }]);
-      } else {
-        const localResponse = generateLocalAIResponse(query);
-        setMessages([...newMsgs, { sender: 'ai', text: localResponse }]);
+        setLoading(false);
+        return;
       }
     } catch (err) {
-      const localResponse = generateLocalAIResponse(query);
-      setMessages([...newMsgs, { sender: 'ai', text: localResponse }]);
-    } finally {
-      setLoading(false);
+      // Backend unavailable or mixed content CORS restriction on static page
     }
+
+    // Dynamic Intelligent Fallback Response
+    const localResponse = generateLocalAIResponse(query);
+    setMessages([...newMsgs, { sender: 'ai', text: localResponse }]);
+    setLoading(false);
   };
 
   return (
