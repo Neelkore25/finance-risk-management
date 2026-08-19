@@ -3,6 +3,40 @@ import { Bot, Send, X, Sparkles, RefreshCw } from 'lucide-react';
 import { apiFetch, formatINR } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 
+function formatMessageContent(text) {
+  if (!text) return null;
+  // Clean out any raw LaTeX formula artifacts if returned
+  const cleaned = text
+    .replace(/\$\$.*?\$\$/g, '')
+    .replace(/\\text\{([^}]+)\}/g, '$1')
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 / $2')
+    .replace(/\\times/g, '×')
+    .replace(/\\left\(|\\right\)/g, '');
+
+  const lines = cleaned.split('\n');
+  return lines.map((line, idx) => {
+    // Parse **bold** markdown tags cleanly
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+    const renderedLine = parts.map((part, pIdx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <strong key={pIdx} className="font-bold text-sky-400 dark:text-sky-300">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return part;
+    });
+
+    return (
+      <React.Fragment key={idx}>
+        {renderedLine}
+        {idx < lines.length - 1 && <br />}
+      </React.Fragment>
+    );
+  });
+}
+
 export function AIRiskAssistant() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -48,42 +82,42 @@ export function AIRiskAssistant() {
     const port = contextData?.portfolio?.metrics || {};
 
     if (q.includes('monthly debt service') || q.includes('debt service') || q.includes('monthly debt')) {
-      return `💳 **Monthly Debt Service Meaning**:\nThe total mandatory monthly sum spent on principal and interest payments across all existing debts, loans, and EMIs (such as mortgages, personal loans, auto loans, and credit card minimums).\n\n• **Formula**: Monthly Debt Service = Σ (Monthly Debt EMIs)\n• **Impact on Risk**: Used directly to compute your Debt-to-Income (DTI) ratio:\n\n$$\\text{DTI} = \\left(\\frac{\\text{Monthly Debt Service}}{\\text{Monthly Net Income}}\\right) \\times 100$$\n\n• **Benchmark**: Financial institutions recommend keeping total monthly debt service below 36% of net income.`;
+      return `💳 **Monthly Debt Service** is the total amount of money you must pay each month toward all active debts and loans.\n\n• **What it includes**: Credit card minimum payments, home loan EMIs, personal loans, and car loans.\n• **Why it matters**: Lenders evaluate this to calculate your Debt-to-Income (DTI) ratio to verify if you can comfortably afford credit.\n• **Best Practice**: Keep total monthly debt payments below 36% of net monthly income.`;
     }
 
     if (q.includes('what is var') || q.includes('value at risk') || q.includes('explain var')) {
-      return `📈 **Value at Risk (VaR) Meaning**:\nA quantitative risk metric estimating the maximum expected financial loss in a portfolio over a specific time horizon (e.g., 1 day) at a given confidence level (e.g., 95% or 99%).\n\n• **Historical VaR**: Calculated from empirical asset return distributions.\n• **Parametric VaR**: Assumes normal Gaussian return distributions.\n• **Monte Carlo VaR**: Vectorized 10,000-path Geometric Brownian Motion simulation.`;
+      return `📈 **Value at Risk (VaR)** is a metric that estimates the maximum potential loss your investment portfolio could face over a specific timeframe under normal market conditions.\n\n• **In simple terms**: It tells you the worst expected loss over 1 day or 1 month.\n• **Why it matters**: Helps investors manage risk and prevent unexpected financial shocks.`;
     }
 
     if (q.includes('credit risk') || q.includes('credit score') || q.includes('default probability')) {
-      return `🏦 **Credit Default Risk Model**:\nA machine-learning model estimating the statistical probability that a borrower may default on debt payments.\n\n• **Model**: Scikit-Learn Logistic Regression & Random Forest\n• **Features Used**: Net income, total debt, monthly EMI, liquid savings, credit utilization percentage.\n\nYour predicted credit tier is **${cred.tier || 'Good'}** (${cred.creditScore || 745}) with a **${((cred.probDefault || 0.08) * 100).toFixed(1)}%** default probability.`;
+      return `🏦 **Credit Default Risk** is the likelihood that a borrower might fail to make their required debt payments on time.\n\n• **What affects it**: Income stability, total existing debt, credit card utilization, and repayment history.\n• **Your Score Tier**: **${cred.tier || 'Good'}** (${cred.creditScore || 745}) with an estimated **${((cred.probDefault || 0.08) * 100).toFixed(1)}%** default probability.`;
     }
 
     if (q.includes('dti') || q.includes('debt to income') || q.includes('reduce debt') || q.includes('emi')) {
-      return `💳 **Debt-to-Income (DTI) Ratio & Debt Reduction Strategy**:\nThe percentage of your monthly net income spent on monthly debt EMIs.\n\n• **Formula**: DTI = (Monthly Debt EMIs / Net Monthly Income) × 100\n• **Healthy Benchmark**: ≤ 36%\n\n👉 **Mitigation Strategy**: Pay down high-interest liabilities first (Debt Avalanche) or consolidate small loans (Debt Snowball). Your current DTI is **${p.dtiRatio || 16}%**.`;
+      return `💳 **Debt-to-Income (DTI) Ratio** compares your total monthly debt payments against your monthly net income.\n\n• **Healthy Goal**: 36% or lower.\n• **How to Reduce It**: Pay off high-interest debts first or consolidate small loans into a lower-rate EMI.\n• **Your Current DTI**: **${p.dtiRatio || 16}%**.`;
     }
 
     if (q.includes('sharpe') || q.includes('meaning of sharpe')) {
-      return `📊 **Sharpe Ratio Meaning**:\nA metric measuring risk-adjusted portfolio return relative to excess volatility.\n\n• **Formula**: Sharpe = (Portfolio Return - Risk Free Rate) / Portfolio Volatility\n• **Interpretation**: > 1.0 is Good, > 2.0 is Very Good, > 3.0 is Excellent.\n\nYour portfolio Sharpe Ratio is **${port.sharpeRatio || 1.85}**.`;
+      return `📊 **Sharpe Ratio** measures how much return an investment generates for the amount of risk taken.\n\n• **Higher is better**: A Sharpe Ratio above 1.0 indicates good risk-adjusted returns.\n• **Your Portfolio Sharpe**: **${port.sharpeRatio || 1.85}**.`;
     }
 
     if (q.includes('liquid savings') || q.includes('emergency fund') || q.includes('savings')) {
-      return `💰 **Liquid Savings & Emergency Reserves**:\nLiquid savings represent immediately accessible cash or high-liquidity assets stored to handle unforeseen financial shocks.\n\n• **Recommended Reserve**: 3 to 6 months of essential living expenses.\n• **Your Current Coverage**: **${p.emergencyCoverageMonths || 6} Months** of living expenses.`;
+      return `💰 **Emergency Savings** represent money held in easily accessible accounts for unexpected expenses or sudden income loss.\n\n• **Rule of Thumb**: Keep 3 to 6 months of living expenses saved.\n• **Your Current Reserve**: **${p.emergencyCoverageMonths || 6} Months** of coverage.`;
     }
 
     if (q.includes('essential expense') || q.includes('discretionary')) {
-      return `🛒 **Essential vs Discretionary Expenses**:\n• **Essential Expenses**: Non-negotiable living costs (rent, food, utility bills, healthcare, basic transport).\n• **Discretionary Expenses**: Optional lifestyle choices (entertainment, dining out, subscriptions).`;
+      return `🛒 **Essential vs Discretionary Expenses**:\n\n• **Essential Expenses**: Must-pay costs like rent, groceries, electricity bills, and medical needs.\n• **Discretionary Expenses**: Optional lifestyle spending like dining out, hobbies, and entertainment.`;
     }
 
     if (q.includes('what is this project') || q.includes('about app') || q.includes('features')) {
-      return `🛡️ **Finance Risk Analytics Platform**:\nAn educational quantitative financial risk management system providing personal risk scoring, Debt-to-Income (DTI) analysis, Portfolio Value at Risk (VaR), Scikit-Learn Credit Risk ML, and What-If scenario simulations.`;
+      return `🛡️ **Finance Risk Analytics Platform** is a personal financial risk workspace that helps you track debt safety (DTI), evaluate credit default risk, analyze portfolio risk (VaR), and test future financial scenarios.`;
     }
 
     if (q.includes('my risk') || q.includes('analyze my') || q.includes('overall') || q.includes('score')) {
-      return `📊 **Your Personal Risk Profile Summary**:\n• **Overall Risk Score**: **${contextData?.personal?.overallScore || 34}/100** (${contextData?.personal?.overallLevel || 'Low Risk'})\n• **Monthly Net Income**: ${formatINR(p.monthlyIncome || 75000)}\n• **Net Cash Flow**: ${formatINR(p.netCashFlow || 18000)}\n• **Debt-to-Income (DTI)**: ${p.dtiRatio || 16}%\n• **Emergency Reserve**: ${p.emergencyCoverageMonths || 6} Months`;
+      return `📊 **Your Personal Financial Risk Summary**:\n\n• **Overall Risk Score**: **${contextData?.personal?.overallScore || 34}/100** (${contextData?.personal?.overallLevel || 'Low Risk'})\n• **Monthly Net Income**: ${formatINR(p.monthlyIncome || 75000)}\n• **Net Cash Flow**: ${formatINR(p.netCashFlow || 18000)}\n• **Debt-to-Income Ratio**: ${p.dtiRatio || 16}%\n• **Emergency Fund**: ${p.emergencyCoverageMonths || 6} Months`;
     }
 
-    return `🤖 **AI Risk Assistant**:\nI can answer financial risk questions such as:\n\n1. **Debt & Income**: Ask "What is meant by monthly debt service?", "Explain DTI ratio"\n2. **Portfolio Risk**: Ask "What is VaR?", "What is Sharpe Ratio?"\n3. **Credit ML**: Ask "Explain Credit Risk score"\n4. **Personal Profile**: Ask "Analyze my financial risk score"`;
+    return `🤖 **AI Risk Assistant**:\nI can help explain financial concepts in simple terms! Try asking:\n\n• "What is monthly debt service?"\n• "What is Value at Risk (VaR)?"\n• "Explain Credit Risk score"\n• "Analyze my financial risk score"`;
   };
 
   const handleSend = async (textToSend) => {
@@ -131,19 +165,21 @@ export function AIRiskAssistant() {
 
   return (
     <>
-      {/* Floating Trigger Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 p-3.5 bg-sky-600 hover:bg-sky-500 text-white rounded-full shadow-2xl transition-all duration-200 flex items-center gap-2 border-2 border-sky-400 opacity-100 group"
-        title="Open AI Risk Assistant"
-      >
-        <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
-        <span className="text-xs font-bold hidden sm:inline pr-1">AI Risk Assistant</span>
-      </button>
+      {/* Floating Trigger Button — Hidden when Modal is Open */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-50 p-3.5 bg-sky-600 hover:bg-sky-500 text-white rounded-full shadow-2xl transition-all duration-200 flex items-center gap-2 border-2 border-sky-400 opacity-100 group"
+          title="Open AI Risk Assistant"
+        >
+          <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+          <span className="text-xs font-bold hidden sm:inline pr-1">AI Risk Assistant</span>
+        </button>
+      )}
 
       {/* AI Chat Modal */}
       {isOpen && (
-        <div className="fixed bottom-20 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] h-[540px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col opacity-100 overflow-hidden">
+        <div className="fixed bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] h-[540px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col opacity-100 overflow-hidden font-sans">
           {/* Header */}
           <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
             <div className="flex items-center gap-2.5">
@@ -151,7 +187,7 @@ export function AIRiskAssistant() {
                 <Bot className="w-5 h-5 text-sky-400" />
               </div>
               <div>
-                <h3 className="text-xs font-extrabold text-white tracking-wide">AI Risk Assistant</h3>
+                <h3 className="text-xs font-extrabold text-white tracking-wide font-display">AI Risk Assistant</h3>
                 <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                   RAG & LLM Engine Active
@@ -207,13 +243,13 @@ export function AIRiskAssistant() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[85%] p-3 rounded-xl leading-relaxed opacity-100 ${
+                  className={`max-w-[85%] p-3 rounded-xl leading-relaxed opacity-100 text-xs ${
                     msg.sender === 'user'
-                      ? 'bg-sky-600 text-white rounded-br-none shadow-sm'
-                      : 'bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-bl-none shadow-sm whitespace-pre-line'
+                      ? 'bg-sky-600 text-white rounded-br-none shadow-sm font-medium'
+                      : 'bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-bl-none shadow-sm'
                   }`}
                 >
-                  {msg.text}
+                  {formatMessageContent(msg.text)}
                 </div>
               </div>
             ))}

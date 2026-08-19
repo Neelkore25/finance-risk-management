@@ -80,23 +80,25 @@ class AssistantRequest(BaseModel):
     user_context: Optional[Dict[str, Any]] = {}
 
 SYSTEM_INSTRUCTION = """
-You are an expert Financial Risk AI Assistant embedded in the Finance Risk Analytics platform.
-Your goals:
-1. Explain financial definitions, risk metrics (VaR, Sharpe ratio, Monte Carlo, Debt ratios), and platform concepts clearly with simple examples.
-2. Provide step-by-step mathematical or logical breakdowns when asked.
-3. Keep responses structured using bullet points, short clear sentences, and lightweight markdown formatting.
+You are an expert Financial Risk AI Assistant embedded in a financial analytics platform.
+Your response guidelines:
+1. Explain financial definitions, risk metrics (VaR, Sharpe ratio, Debt ratios, Credit Risk) in short, simple, plain English terms.
+2. DO NOT use complex LaTeX formulas, raw code equations, or heavy mathematical notation unless explicitly requested.
+3. Keep responses structured using bullet points, short clear sentences, and lightweight bold headers (**Concept**).
 4. Format currency figures in Indian Rupees (₹) when referencing user portfolio context.
 """
 
 def generate_structured_risk_response(query: str, context: dict) -> str:
     q = query.lower().strip()
+    if 'monthly debt service' in q or 'debt service' in q or 'monthly debt' in q:
+        return "💳 **Monthly Debt Service** is the total amount of money you must pay each month toward all active debts and loans (like credit card EMIs, car loans, and home mortgages).\n\n• **Why it matters**: Lenders evaluate this to determine if you can comfortably afford new credit without risking default.\n• **Best Practice**: Financial advisors recommend keeping total monthly debt payments below 36% of your net income."
     if 'what is var' in q or 'value at risk' in q:
-        return "📈 **Value at Risk (VaR)** is a statistical metric estimating the maximum expected financial loss in a portfolio over a specific time horizon (e.g. 1 day) at a given confidence level (e.g. 95% or 99%).\n\n• **Historical VaR**: Derived from empirical distribution of daily returns.\n• **Parametric VaR**: Assumes normal distribution: (Mean − z · StdDev) × Portfolio Value.\n• **Monte Carlo VaR**: Vectorized 10,000-path Brownian motion simulation."
+        return "📈 **Value at Risk (VaR)** is a metric that estimates the maximum expected financial loss your portfolio could face over a given timeframe (like 1 day) under normal market conditions."
     if 'credit risk' in q or 'default' in q:
-        return "🏦 **Credit Risk Score** estimates the statistical probability that a borrower may default on debt obligations.\n\n• **Model**: Scikit-Learn Logistic Regression & Random Forest\n• **Features Evaluated**: Monthly income, total debt, monthly EMI, liquid savings balance, and credit utilization."
+        return "🏦 **Credit Default Risk** is the statistical probability that a borrower might fail to make their required debt payments on time."
     if 'dti' in q or 'debt to income' in q:
-        return "💳 **Debt-to-Income (DTI) Ratio** is the percentage of monthly income spent on debt obligations.\n\n• **Formula**: (Monthly EMI / Net Monthly Income) × 100\n• **Healthy Bound**: ≤ 36%\n• **High Risk**: > 50%"
-    return f"🤖 **AI Risk Assistant**:\nBased on Finance Risk Analytics engine:\n\n• You can ask me to explain financial terms like **VaR**, **Sharpe Ratio**, **DTI Ratio**, or **Credit ML**.\n• Or ask me to **Analyze my portfolio risk**."
+        return "💳 **Debt-to-Income (DTI) Ratio** compares your total monthly debt payments against your net monthly income."
+    return f"🤖 **AI Risk Assistant**:\nI can answer questions about:\n\n• **Monthly Debt Service** & **DTI Ratio**\n• **Value at Risk (VaR)** & **Sharpe Ratio**\n• **Credit Default Risk Score**\n• **Personal Financial Risk Analysis**"
 
 @app.get("/health")
 def health_check():
