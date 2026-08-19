@@ -106,8 +106,12 @@ export function AuthProvider({ children }) {
       }
     });
 
-    if (error) throw error;
-    // Do NOT log the user in or set session here.
+    if (error) {
+      if (error.message?.toLowerCase().includes('rate limit')) {
+        throw new Error('Supabase email rate limit exceeded. Please disable "Confirm email" in your Supabase Dashboard under Authentication -> Providers -> Email to allow instant signups.');
+      }
+      throw error;
+    }
     return data;
   };
 
