@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Lock, Mail, User, Eye, EyeOff, Check, AlertCircle, CheckCircle2, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { 
+  Shield, Mail, Lock, User, Eye, EyeOff, Check, AlertCircle, 
+  Sun, Moon, ShieldCheck, CheckCircle2, LockKeyhole
+} from 'lucide-react';
 
 export function Login() {
-  const [activeTab, setActiveTab] = useState('login'); // 'login' or 'register'
+  const [activeTab, setActiveTab] = useState('login');
   
   // Login State
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginEmailErr, setLoginEmailErr] = useState('');
+  const [loginPasswordErr, setLoginPasswordErr] = useState('');
 
   // Register State
   const [regName, setRegName] = useState('');
@@ -20,316 +26,316 @@ export function Login() {
   const [regConfirm, setRegConfirm] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirm, setShowRegConfirm] = useState(false);
+  const [regLoading, setRegLoading] = useState(false);
+  const [regEmailErr, setRegEmailErr] = useState('');
+  const [regConfirmErr, setRegConfirmErr] = useState('');
 
-  // Status & Feedback
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
+  // Toast State
+  const [toast, setToast] = useState({ show: false, msg: '', type: 'ok' });
 
-  const { login, googleLogin, register } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { login, register, resetPassword } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
-  // Password Security Meter calculation
-  const getPasswordScore = (pw) => {
-    if (!pw) return { score: 0, label: 'WEAK', color: 'bg-rose-500', text: 'text-rose-500' };
-    let s = 0;
-    if (pw.length >= 6) s += 25;
-    if (pw.length >= 10) s += 20;
-    if (/[A-Z]/.test(pw)) s += 20;
-    if (/[0-9]/.test(pw)) s += 20;
-    if (/[^A-Za-z0-9]/.test(pw)) s += 15;
-    s = Math.min(s, 100);
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (s < 40) return { score: s, label: 'WEAK', color: 'bg-rose-500', text: 'text-rose-500' };
-    if (s < 75) return { score: s, label: 'MODERATE', color: 'bg-amber-500', text: 'text-amber-500' };
-    return { score: s, label: 'STRONG', color: 'bg-emerald-500', text: 'text-emerald-500' };
+  const showToastMsg = (msg, type = 'ok') => {
+    setToast({ show: true, msg, type });
+    setTimeout(() => setToast({ show: false, msg: '', type: 'ok' }), 3200);
   };
 
-  const pwMeter = getPasswordScore(regPassword);
+  // Password Security Meter calculation
+  const getPasswordScore = (v) => {
+    if (!v) return 0;
+    let score = 0;
+    if (v.length >= 6) score += 25;
+    if (v.length >= 10) score += 20;
+    if (/[A-Z]/.test(v)) score += 20;
+    if (/[0-9]/.test(v)) score += 20;
+    if (/[^A-Za-z0-9]/.test(v)) score += 15;
+    return Math.min(score, 100);
+  };
 
+  const pwScore = getPasswordScore(regPassword);
+  let pwColor = '#f0576b';
+  let pwLabel = 'WEAK';
+  if (pwScore >= 75) {
+    pwColor = '#34d399';
+    pwLabel = 'STRONG';
+  } else if (pwScore >= 40) {
+    pwColor = '#f5a524';
+    pwLabel = 'MODERATE';
+  }
+
+  // Handle Login Submit
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
+    setLoginEmailErr('');
+    setLoginPasswordErr('');
 
+    let valid = true;
+    if (!emailRe.test(loginEmail.trim())) {
+      setLoginEmailErr('Enter a valid email address.');
+      valid = false;
+    }
+    if (!loginPassword) {
+      setLoginPasswordErr('Please enter your password.');
+      valid = false;
+    }
+    if (!valid) return;
+
+    setLoginLoading(true);
     try {
-      await login(loginEmail, loginPassword);
-      setSuccess('Signed in — redirecting to your dashboard...');
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
+      await login(loginEmail.trim(), loginPassword);
+      showToastMsg('Signed in — redirecting to your dashboard…', 'ok');
+      setTimeout(() => navigate('/dashboard'), 600);
     } catch (err) {
-      setError(err.message || 'Incorrect email or password.');
+      setLoginEmailErr('Incorrect email or password.');
+      setLoginPasswordErr('Incorrect email or password.');
+      showToastMsg(err.message || 'Incorrect email or password.', 'error');
     } finally {
-      setLoading(false);
+      setLoginLoading(false);
     }
   };
 
+  // Handle Register Submit
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setRegEmailErr('');
+    setRegConfirmErr('');
 
-    if (regPassword !== regConfirm) {
-      setError("Passwords don't match.");
-      return;
+    let valid = true;
+    if (!regName.trim()) valid = false;
+    if (!emailRe.test(regEmail.trim())) {
+      setRegEmailErr('Enter a valid email address.');
+      valid = false;
     }
-
     if (regPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
-      return;
+      showToastMsg('Password must be at least 6 characters.', 'error');
+      valid = false;
     }
+    if (regConfirm !== regPassword) {
+      setRegConfirmErr("Passwords don't match.");
+      valid = false;
+    }
+    if (!valid) return;
 
-    setLoading(true);
+    setRegLoading(true);
     try {
-      await register(regEmail, regPassword, regName);
-      setSuccess('Account created — redirecting to your dashboard...');
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
+      await register(regEmail.trim(), regPassword, regName.trim());
+      showToastMsg('Account created — signing you in...', 'ok');
+      setTimeout(() => navigate('/dashboard'), 600);
     } catch (err) {
-      setError(err.message || 'Registration failed.');
+      setRegEmailErr(err.message || 'This email is already registered.');
+      showToastMsg(err.message || 'Registration failed.', 'error');
     } finally {
-      setLoading(false);
+      setRegLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setError('');
-    setSuccess('');
-    setLoading(true);
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!loginEmail.trim() || !emailRe.test(loginEmail.trim())) {
+      showToastMsg('Please enter your valid email address first.', 'error');
+      return;
+    }
     try {
-      await googleLogin();
-      navigate('/dashboard');
+      await resetPassword(loginEmail.trim());
+      showToastMsg('Password reset link sent to your registered email.', 'ok');
     } catch (err) {
-      setError(err.message || 'Unable to sign in with Google. Please try again.');
-    } finally {
-      setLoading(false);
+      showToastMsg('Password reset link sent if the account exists.', 'ok');
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex opacity-100 selection:bg-sky-600 selection:text-white font-sans">
-      <div className="flex w-full min-h-screen">
-        
-        {/* ============ LEFT BRAND & RISK GAUGE PANEL ============ */}
-        <aside className="hidden lg:flex flex-col justify-between flex-1 max-w-[620px] p-12 border-r border-slate-800 bg-slate-900/60 relative overflow-hidden">
-          {/* Animated Background Ticker SVG */}
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <svg viewBox="0 0 600 120" preserveAspectRatio="none" className="w-[200%] h-full animate-[pulse_6s_infinite]">
-              <polyline
-                points="0,80 40,60 80,70 120,40 160,55 200,20 240,45 280,30 320,50 360,25 400,42 440,15 480,38 520,22 560,48 600,30"
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="2"
-              />
-            </svg>
-          </div>
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex transition-colors duration-350 overflow-x-hidden font-sans">
+      {/* Toast Notification */}
+      <div
+        className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl font-semibold text-xs shadow-2xl flex items-center gap-2.5 border transition-all duration-400 ${
+          toast.show ? 'translate-y-0 opacity-100' : '-translate-y-16 opacity-0'
+        } ${
+          toast.type === 'ok'
+            ? 'bg-slate-900 border-emerald-500/40 text-emerald-300'
+            : 'bg-slate-900 border-rose-500/40 text-rose-300'
+        }`}
+      >
+        <span className="shrink-0 p-1 rounded-full bg-current/10">
+          {toast.type === 'ok' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-400" />
+          )}
+        </span>
+        <span>{toast.msg}</span>
+      </div>
 
-          {/* Logo Row */}
+      <div className="flex w-full min-h-screen">
+        {/* ============ LEFT: BRAND PANEL ============ */}
+        <aside className="hidden lg:flex flex-col justify-between flex-1 max-w-[620px] p-12 border-r border-slate-800/80 relative overflow-hidden bg-slate-950">
+          {/* Animated Grid Pattern Background */}
+          <div className="absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-900/30 via-slate-950 to-slate-950" />
+
+          {/* Logo Header */}
           <div className="relative z-10 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-sky-500/30">
-              <Shield className="w-6 h-6 stroke-[2.5] text-white" />
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-sky-500/30 shrink-0">
+              <Shield className="w-5 h-5 text-white stroke-[2.5]" />
             </div>
             <div>
-              <div className="text-base font-black tracking-wider text-white">
+              <div className="text-base font-extrabold text-white tracking-wide font-display">
                 FINANCE <span className="text-cyan-400">RISK</span> ANALYTICS
               </div>
-              <div className="text-[9.5px] tracking-widest text-slate-400 font-bold uppercase">
-                Quantitative Analytics Suite
+              <div className="text-[9.5px] tracking-[2px] text-slate-400 font-bold uppercase mt-0.5">
+                QUANTITATIVE ANALYTICS SUITE
               </div>
             </div>
           </div>
 
-          {/* Brand Copy & Interactive Gauge */}
+          {/* Brand Headline & Copy */}
           <div className="relative z-10 my-auto py-8">
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-cyan-400 bg-cyan-950/60 border border-cyan-800/60 px-3 py-1.5 rounded-full mb-6">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-semibold text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-sm shadow-cyan-400" />
               SYSTEM SECURE
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight mb-4 font-display">
-              Know your exposure <br />
-              <span className="bg-gradient-to-r from-sky-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
-                before the market does.
-              </span>
+            <h1 className="text-3xl font-extrabold text-white leading-tight font-display tracking-tight mb-4">
+              Know your exposure<br />
+              before the market does<span className="text-cyan-400">.</span>
             </h1>
-            <p className="text-sm text-slate-400 leading-relaxed max-w-md">
-              Sign in to track your portfolio VaR, credit risk, and stress-test scenarios in one unified executive workspace.
+
+            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-md">
+              Sign in to track your portfolio VaR, credit risk models, and stress-test scenarios in one integrated workspace.
             </p>
 
-            {/* Overall Risk Score Live Gauge Card */}
-            <div className="mt-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl opacity-100">
-              <div className="flex items-center justify-between mb-3 text-xs font-bold text-slate-400">
-                <span>OVERALL FINANCIAL RISK SCORE</span>
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            {/* Risk Gauge Scorecard Card */}
+            <div className="mt-8 p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-md space-y-3">
+              <div className="flex items-center justify-between text-[10.5px] font-bold tracking-wider">
+                <span className="text-slate-400">OVERALL FINANCIAL RISK SCORE</span>
+                <span className="text-emerald-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                   LIVE
                 </span>
               </div>
-              <div className="flex items-center gap-5">
-                <div className="relative w-16 h-16 flex items-center justify-center">
-                  <svg className="w-16 h-16 transform -rotate-90">
-                    <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+
+              <div className="flex items-center gap-4">
+                <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 72 72">
+                    <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
                     <circle
-                      cx="32"
-                      cy="32"
-                      r="26"
+                      cx="36"
+                      cy="36"
+                      r="30"
                       fill="none"
-                      stroke="#38bdf8"
+                      stroke="url(#gaugeGradient)"
                       strokeWidth="6"
-                      strokeDasharray="163.3"
-                      strokeDashoffset="99"
+                      strokeDasharray="188.5"
+                      strokeDashoffset="115"
                       strokeLinecap="round"
                     />
+                    <defs>
+                      <linearGradient id="gaugeGradient" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#22d3ee" />
+                      </linearGradient>
+                    </defs>
                   </svg>
+                  <span className="absolute text-sm font-black text-white font-display">39</span>
                 </div>
+
                 <div>
-                  <div className="text-2xl font-black text-white">
-                    39 <span className="text-xs text-slate-400 font-normal">/100</span>
+                  <div className="text-2xl font-bold font-display text-white">
+                    39<span className="text-xs text-slate-500 font-medium">/100</span>
                   </div>
-                  <div className="text-xs text-slate-400">Debt-to-income steady at 16%</div>
-                  <span className="inline-block mt-1 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-950/80 text-amber-400 border border-amber-800/80">
+                  <div className="text-[11.5px] text-slate-400 mt-0.5">Debt-to-income steady at 16%</div>
+                  <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-950/60 text-amber-400 border border-amber-500/30 tracking-wide">
                     MODERATE RISK
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Bullet Feature List */}
+            {/* Feature Bullet List */}
             <ul className="mt-6 space-y-2.5 text-xs text-slate-300">
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-cyan-400 stroke-[3]" />
-                Real-time Value-at-Risk (VaR) modeling
+              <li className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-cyan-400 stroke-[2.5]" />
+                <span>Real-time Value-at-Risk modeling</span>
               </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-cyan-400 stroke-[3]" />
-                Credit default risk scoring
+              <li className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-cyan-400 stroke-[2.5]" />
+                <span>Credit default risk scoring</span>
               </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-cyan-400 stroke-[3]" />
-                What-if portfolio stress testing
+              <li className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-cyan-400 stroke-[2.5]" />
+                <span>What-if portfolio stress testing</span>
               </li>
             </ul>
           </div>
 
-          {/* Footer Security Badge */}
-          <div className="relative z-10 text-xs text-slate-500 flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5" />
-            256-bit encrypted • Your credentials never leave this device unhashed
+          {/* Footer Security Disclaimer */}
+          <div className="relative z-10 flex items-center gap-2 text-[11px] text-slate-500">
+            <LockKeyhole className="w-3.5 h-3.5" />
+            <span>256-bit encrypted • Your credentials never leave this device unhashed</span>
           </div>
         </aside>
 
-        {/* ============ RIGHT FORM PANEL ============ */}
-        <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 relative bg-slate-950">
-          
+        {/* ============ RIGHT: FORM PANEL ============ */}
+        <main className="flex-1 flex items-center justify-center p-6 sm:p-10 relative bg-slate-950">
           {/* Theme Toggle Button */}
           <button
-            type="button"
             onClick={toggleTheme}
-            className="absolute top-6 right-6 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="absolute top-6 right-6 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-cyan-400 transition-colors"
             title="Toggle theme"
           >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-400" />}
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          <div className="w-full max-w-[420px]">
-            
+          <div className="w-full max-w-[400px]">
             {/* Mobile Header Logo */}
-            <div className="flex lg:hidden items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-cyan-400 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-white" />
+            <div className="lg:hidden flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-sky-500/30 shrink-0">
+                <Shield className="w-5 h-5 text-white stroke-[2.5]" />
               </div>
-              <div className="text-base font-black tracking-wider text-white">
+              <div className="text-base font-extrabold text-white tracking-wide font-display">
                 FINANCE <span className="text-cyan-400">RISK</span> ANALYTICS
               </div>
             </div>
 
-            {/* TAB SWITCHER HEADER ([ Sign In ] | [ Create Account ]) */}
-            <div className="grid grid-cols-2 p-1 bg-slate-900 border border-slate-800 rounded-xl mb-6 opacity-100">
+            {/* Tab Switcher */}
+            <div className="relative flex p-1 bg-slate-900 border border-slate-800 rounded-xl mb-6">
+              <div
+                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-gradient-to-r from-sky-500 to-cyan-400 rounded-lg shadow-lg shadow-sky-500/30 transition-transform duration-300 ease-out ${
+                  activeTab === 'register' ? 'translate-x-[calc(100%+8px)]' : 'translate-x-0'
+                }`}
+              />
               <button
                 type="button"
-                onClick={() => { setActiveTab('login'); setError(''); setSuccess(''); }}
-                className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'login'
-                    ? 'bg-gradient-to-r from-sky-600 to-cyan-500 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
+                onClick={() => setActiveTab('login')}
+                className={`flex-1 py-2 text-xs font-bold transition-colors z-10 ${
+                  activeTab === 'login' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 Sign In
               </button>
               <button
                 type="button"
-                onClick={() => { setActiveTab('register'); setError(''); setSuccess(''); }}
-                className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'register'
-                    ? 'bg-gradient-to-r from-sky-600 to-cyan-500 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
+                onClick={() => setActiveTab('register')}
+                className={`flex-1 py-2 text-xs font-bold transition-colors z-10 ${
+                  activeTab === 'register' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 Create Account
               </button>
             </div>
 
-            {/* Alert Banners */}
-            {error && (
-              <div className="mb-4 p-3.5 rounded-xl bg-rose-950/90 border border-rose-800 text-rose-300 text-xs flex items-center gap-2.5 opacity-100">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {success && (
-              <div className="mb-4 p-3.5 rounded-xl bg-emerald-950/90 border border-emerald-800 text-emerald-300 text-xs flex items-center gap-2.5 opacity-100">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{success}</span>
-              </div>
-            )}
-
-            {/* OAUTH BUTTONS SECTION (Single Continue with Google & GitHub) */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="py-2.5 px-3 bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-2 border border-slate-200"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                <span>Google</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-2 border border-slate-800"
-              >
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                </svg>
-                <span>GitHub</span>
-              </button>
-            </div>
-
-            <div className="relative flex items-center justify-center mb-6">
-              <div className="border-t border-slate-800 w-full" />
-              <span className="bg-slate-950 px-3 text-[10px] text-slate-500 font-bold uppercase tracking-widest absolute">
-                or continue with email
-              </span>
-            </div>
-
-            {/* TAB 1: SIGN IN FORM */}
+            {/* SIGN IN FORM PANE */}
             {activeTab === 'login' && (
-              <form onSubmit={handleLoginSubmit} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-300">Email Address</label>
+              <form onSubmit={handleLoginSubmit} className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div>
+                  <h2 className="text-xl font-bold text-white font-display">Welcome back</h2>
+                  <p className="text-xs text-slate-400 mt-1">Sign in to your risk workspace to continue.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-300">Email</label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                     <input
@@ -338,17 +344,24 @@ export function Login() {
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       placeholder="you@company.com"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors opacity-100"
+                      className={`w-full pl-9 pr-3 py-2.5 bg-slate-900 border rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
+                        loginEmailErr ? 'border-rose-500/60' : 'border-slate-800'
+                      }`}
                     />
                   </div>
+                  {loginEmailErr && <p className="text-[11px] text-rose-400">{loginEmailErr}</p>}
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-300">Password</label>
-                    <Link to="/forgot-password" className="text-[11px] font-semibold text-cyan-400 hover:underline">
+                    <label className="block text-xs font-semibold text-slate-300">Password</label>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-[11px] font-semibold text-cyan-400 hover:underline"
+                    >
                       Forgot password?
-                    </Link>
+                    </button>
                   </div>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
@@ -358,25 +371,28 @@ export function Login() {
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="w-full pl-10 pr-10 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors opacity-100"
+                      className={`w-full pl-9 pr-9 py-2.5 bg-slate-900 border rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
+                        loginPasswordErr ? 'border-rose-500/60' : 'border-slate-800'
+                      }`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowLoginPassword(!showLoginPassword)}
-                      className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300 transition-colors"
+                      className="absolute right-3 top-3 text-slate-500 hover:text-cyan-400 transition-colors"
                     >
                       {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {loginPasswordErr && <p className="text-[11px] text-rose-400">{loginPasswordErr}</p>}
                 </div>
 
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-xs pt-1">
                   <label className="flex items-center gap-2 text-slate-400 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="rounded bg-slate-900 border-slate-800 text-sky-600 focus:ring-sky-500"
+                      className="w-3.5 h-3.5 rounded accent-sky-500 cursor-pointer"
                     />
                     <span>Remember me</span>
                   </label>
@@ -384,13 +400,13 @@ export function Login() {
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full py-3 bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-sky-600/30 transition-all disabled:opacity-50 mt-2"
+                  disabled={loginLoading}
+                  className="w-full py-3 bg-gradient-to-r from-sky-500 to-cyan-400 hover:from-sky-400 hover:to-cyan-300 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-sky-500/25 transition-all duration-200 disabled:opacity-50 font-display tracking-wide mt-2"
                 >
-                  {loading ? 'Signing in...' : 'Sign In'}
+                  {loginLoading ? 'Signing In...' : 'Sign In'}
                 </button>
 
-                <div className="text-center text-xs text-slate-400 pt-2">
+                <div className="text-center text-xs text-slate-400 pt-4">
                   Don't have an account?{' '}
                   <button
                     type="button"
@@ -403,11 +419,16 @@ export function Login() {
               </form>
             )}
 
-            {/* TAB 2: CREATE ACCOUNT FORM */}
+            {/* CREATE ACCOUNT FORM PANE */}
             {activeTab === 'register' && (
-              <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              <form onSubmit={handleRegisterSubmit} className="space-y-3.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div>
+                  <h2 className="text-xl font-bold text-white font-display">Create your account</h2>
+                  <p className="text-xs text-slate-400 mt-1">Set up access to the analytics suite in under a minute.</p>
+                </div>
+
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-300">Full Name</label>
+                  <label className="block text-xs font-semibold text-slate-300">Full Name</label>
                   <div className="relative">
                     <User className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                     <input
@@ -415,14 +436,14 @@ export function Login() {
                       required
                       value={regName}
                       onChange={(e) => setRegName(e.target.value)}
-                      placeholder="John Doe"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors opacity-100"
+                      placeholder="Jordan Ellis"
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-300">Email Address</label>
+                  <label className="block text-xs font-semibold text-slate-300">Email</label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                     <input
@@ -431,13 +452,16 @@ export function Login() {
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
                       placeholder="you@company.com"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors opacity-100"
+                      className={`w-full pl-9 pr-3 py-2.5 bg-slate-900 border rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
+                        regEmailErr ? 'border-rose-500/60' : 'border-slate-800'
+                      }`}
                     />
                   </div>
+                  {regEmailErr && <p className="text-[11px] text-rose-400">{regEmailErr}</p>}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-300">Password</label>
+                  <label className="block text-xs font-semibold text-slate-300">Password</label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                     <input
@@ -446,12 +470,12 @@ export function Login() {
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       placeholder="Create a password"
-                      className="w-full pl-10 pr-10 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors opacity-100"
+                      className="w-full pl-9 pr-9 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setShowRegPassword(!showRegPassword)}
-                      className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300 transition-colors"
+                      className="absolute right-3 top-3 text-slate-500 hover:text-cyan-400 transition-colors"
                     >
                       {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -459,20 +483,28 @@ export function Login() {
 
                   {/* Security Score Meter */}
                   {regPassword && (
-                    <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1.5 mt-2 opacity-100">
+                    <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5 mt-2">
                       <div className="flex items-center justify-between text-[10px] font-bold">
-                        <span className="text-slate-400">SECURITY SCORE</span>
-                        <span className={pwMeter.text}>{pwMeter.label}</span>
+                        <span className="text-slate-400 tracking-wider">SECURITY SCORE</span>
+                        <span
+                          className="px-2 py-0.5 rounded-full font-extrabold text-[9.5px]"
+                          style={{ color: pwColor, backgroundColor: `${pwColor}20` }}
+                        >
+                          {pwLabel}
+                        </span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                        <div className={`h-full transition-all duration-300 ${pwMeter.color}`} style={{ width: `${pwMeter.score}%` }} />
+                      <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full transition-all duration-300"
+                          style={{ width: `${pwScore}%`, backgroundColor: pwColor }}
+                        />
                       </div>
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-300">Confirm Password</label>
+                  <label className="block text-xs font-semibold text-slate-300">Confirm Password</label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                     <input
@@ -481,27 +513,30 @@ export function Login() {
                       value={regConfirm}
                       onChange={(e) => setRegConfirm(e.target.value)}
                       placeholder="Re-enter your password"
-                      className="w-full pl-10 pr-10 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors opacity-100"
+                      className={`w-full pl-9 pr-9 py-2.5 bg-slate-900 border rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
+                        regConfirmErr ? 'border-rose-500/60' : 'border-slate-800'
+                      }`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowRegConfirm(!showRegConfirm)}
-                      className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300 transition-colors"
+                      className="absolute right-3 top-3 text-slate-500 hover:text-cyan-400 transition-colors"
                     >
                       {showRegConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {regConfirmErr && <p className="text-[11px] text-rose-400">{regConfirmErr}</p>}
                 </div>
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full py-3 bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-sky-600/30 transition-all disabled:opacity-50 mt-2"
+                  disabled={regLoading}
+                  className="w-full py-3 bg-gradient-to-r from-sky-500 to-cyan-400 hover:from-sky-400 hover:to-cyan-300 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-sky-500/25 transition-all duration-200 disabled:opacity-50 font-display tracking-wide mt-2"
                 >
-                  {loading ? 'Creating Account...' : 'Create Account'}
+                  {regLoading ? 'Creating Account...' : 'Create Account'}
                 </button>
 
-                <div className="text-center text-xs text-slate-400 pt-2">
+                <div className="text-center text-xs text-slate-400 pt-3">
                   Already have an account?{' '}
                   <button
                     type="button"
@@ -514,15 +549,14 @@ export function Login() {
               </form>
             )}
 
-            <div className="mt-8 text-center text-[11px] text-slate-500 flex items-center justify-center gap-2">
-              <a href="#" className="hover:underline">Privacy Policy</a>
+            {/* Footer Legal Links */}
+            <div className="mt-8 text-center text-[11px] text-slate-500 space-x-2">
+              <a href="#" className="hover:text-slate-300 underline">Privacy</a>
               <span>•</span>
-              <a href="#" className="hover:underline">Terms of Service</a>
+              <a href="#" className="hover:text-slate-300 underline">Terms</a>
             </div>
-
           </div>
         </main>
-
       </div>
     </div>
   );

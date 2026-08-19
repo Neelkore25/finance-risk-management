@@ -36,23 +36,21 @@ export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [],
   const cashFlowScore = netCashFlow < 0 ? 90 : Math.max(0, 100 - savingsRate * 2);
   const emergencyScore = emergencyCoverageMonths < 3 ? 85 : emergencyCoverageMonths < 6 ? 40 : 15;
   const liquidityScore = liquidCoverageMonths < 2 ? 80 : 20;
+
+  const totalPortfolioValue = investments.reduce((sum, inv) => sum + Number(inv.current_price * inv.quantity || 0), 0);
   const concentrationScore = investments.length < 2 ? 75 : 25;
 
-  const debtImpact = debtScore * 0.25;
-  const cashFlowImpact = cashFlowScore * 0.25;
-  const emergencyImpact = emergencyScore * 0.20;
-  const liquidityImpact = liquidityScore * 0.15;
-  const concentrationImpact = concentrationScore * 0.15;
-
   const overallScore = Math.min(100, Math.max(0, Math.round(
-    debtImpact + cashFlowImpact + emergencyImpact + liquidityImpact + concentrationImpact
+    (debtScore * 0.25) +
+    (cashFlowScore * 0.25) +
+    (emergencyScore * 0.20) +
+    (liquidityScore * 0.15) +
+    (concentrationScore * 0.15)
   )));
 
   let overallLevel = 'Low Risk';
   if (overallScore >= 60) overallLevel = 'High Risk';
   else if (overallScore >= 35) overallLevel = 'Moderate Risk';
-
-  const totalPortfolioValue = investments.reduce((sum, inv) => sum + Number(inv.current_price * inv.quantity || 0), 0);
 
   return {
     overallScore,
@@ -74,51 +72,11 @@ export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [],
       totalPortfolioValue
     },
     categories: {
-      debtRisk: {
-        score: debtScore,
-        level: debtScore > 50 ? 'High Risk' : 'Low Risk',
-        weight: '25%',
-        impact: debtImpact,
-        metric: `DTI Ratio: ${dtiRatio}%`,
-        explanation: `Monthly EMI debt payments total ${formatINR(totalDebtPayment)}, representing ${dtiRatio}% of your net monthly income.`,
-        action: 'Keep monthly EMI debt obligations under 36% of net income.'
-      },
-      cashFlowRisk: {
-        score: cashFlowScore,
-        level: cashFlowScore > 50 ? 'High Risk' : 'Low Risk',
-        weight: '25%',
-        impact: cashFlowImpact,
-        metric: `Net Cash Flow: ${formatINR(netCashFlow)}`,
-        explanation: `Net monthly cash flow surplus after expenses and EMIs is ${formatINR(netCashFlow)} (Savings Rate: ${savingsRate}%).`,
-        action: 'Optimize discretionary spending to increase monthly surplus.'
-      },
-      emergencyFundRisk: {
-        score: emergencyScore,
-        level: emergencyScore > 50 ? 'High Risk' : 'Low Risk',
-        weight: '20%',
-        impact: emergencyImpact,
-        metric: `Coverage: ${emergencyCoverageMonths} Months`,
-        explanation: `Emergency fund of ${formatINR(emergencyFund)} covers ${emergencyCoverageMonths} months of essential living costs.`,
-        action: 'Build liquid emergency fund to at least 6 months of essential spending.'
-      },
-      liquidityRisk: {
-        score: liquidityScore,
-        level: liquidityScore > 50 ? 'High Risk' : 'Low Risk',
-        weight: '15%',
-        impact: liquidityImpact,
-        metric: `Buffer: ${liquidCoverageMonths} Months`,
-        explanation: `Liquid savings of ${formatINR(existingSavings)} cover ${liquidCoverageMonths} months of total monthly expenses.`,
-        action: 'Maintain accessible cash buffer in high-yield savings.'
-      },
-      investmentConcentrationRisk: {
-        score: concentrationScore,
-        level: concentrationScore > 50 ? 'High Risk' : 'Low Risk',
-        weight: '15%',
-        impact: concentrationImpact,
-        metric: `Holdings: ${investments.length} Assets`,
-        explanation: `Portfolio contains ${investments.length} distinct asset holdings with total value ${formatINR(totalPortfolioValue)}.`,
-        action: 'Diversify portfolio across equities, bonds, and mutual funds.'
-      }
+      debtRisk: { score: debtScore, level: debtScore > 50 ? 'High Risk' : 'Low Risk', weight: '25%', impact: Number((debtScore * 0.25).toFixed(1)), metric: `${dtiRatio}% DTI`, explanation: `DTI ratio is ${dtiRatio}%.`, action: 'Keep monthly EMI debt obligations under 36% of net income.' },
+      cashFlowRisk: { score: cashFlowScore, level: cashFlowScore > 50 ? 'High Risk' : 'Low Risk', weight: '25%', impact: Number((cashFlowScore * 0.25).toFixed(1)), metric: formatINR(netCashFlow), explanation: `Net monthly cash flow surplus is ${formatINR(netCashFlow)}.`, action: 'Optimize discretionary spending to increase monthly surplus.' },
+      emergencyFundRisk: { score: emergencyScore, level: emergencyScore > 50 ? 'High Risk' : 'Low Risk', weight: '20%', impact: Number((emergencyScore * 0.20).toFixed(1)), metric: `${emergencyCoverageMonths} Months`, explanation: `Emergency fund covers ${emergencyCoverageMonths} months of essential expenses.`, action: 'Build liquid emergency fund to at least 6 months of essential spending.' },
+      liquidityRisk: { score: liquidityScore, level: liquidityScore > 50 ? 'High Risk' : 'Low Risk', weight: '15%', impact: Number((liquidityScore * 0.15).toFixed(1)), metric: `${liquidCoverageMonths} Months`, explanation: `Liquid savings cover ${liquidCoverageMonths} months of total expenses.`, action: 'Maintain accessible cash buffer in high-yield savings.' },
+      investmentConcentrationRisk: { score: concentrationScore, level: concentrationScore > 50 ? 'High Risk' : 'Low Risk', weight: '15%', impact: Number((concentrationScore * 0.15).toFixed(1)), metric: `${investments.length} Asset Holdings`, explanation: `Portfolio contains ${investments.length} distinct asset holdings.`, action: 'Diversify portfolio across equities, bonds, and mutual funds.' }
     }
   };
 }
@@ -130,6 +88,10 @@ export async function apiFetch(endpoint, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
   const body = options.body ? JSON.parse(options.body) : null;
   const cleanEp = endpoint.split('?')[0];
+
+  if (!isSupabaseConfigured()) {
+    console.warn(`Supabase environment variables not configured. API call to ${endpoint} returned static engine results.`);
+  }
 
   const { data: { user } } = isSupabaseConfigured() ? await supabase.auth.getUser() : { data: { user: null } };
   const userId = user?.id;
@@ -334,40 +296,34 @@ export async function apiFetch(endpoint, options = {}) {
     }
 
     const totalVal = invs.reduce((sum, i) => sum + (Number(i.quantity) * Number(i.current_price)), 0) || 250000;
-    const histVaRPct = 2.45;
-    const histVaRAmt = Math.round(totalVal * (histVaRPct / 100));
-
-    const paramVaRPct = 2.15;
-    const paramVaRAmt = Math.round(totalVal * (paramVaRPct / 100));
-
-    const cvarPct = 3.85;
-    const cvarAmt = Math.round(totalVal * (cvarPct / 100));
+    const var95Pct = 2.45;
+    const var95Amt = Math.round(totalVal * (var95Pct / 100));
 
     return {
       portfolioRisk: {
         totalValue: totalVal,
         metrics: {
-          historicalVaR1DayAmount: histVaRAmt,
-          historicalVaR1DayPct: histVaRPct,
-          parametricVaR1DayAmount: paramVaRAmt,
-          parametricVaR1DayPct: paramVaRPct,
-          cvar1DayAmount: cvarAmt,
-          cvar1DayPct: cvarPct,
+          historicalVaR1DayAmount: var95Amt,
+          historicalVaR1DayPct: var95Pct,
+          parametricVaR1DayAmount: Math.round(totalVal * 0.021),
+          parametricVaR1DayPct: 2.1,
+          cvar1DayAmount: Math.round(totalVal * 0.034),
+          cvar1DayPct: 3.4,
           sharpeRatio: 1.85,
-          beta: 1.05,
+          beta: 0.92,
           annualizedVol: 14.2,
           maxDrawdownPct: 8.4
         },
         heatmap: {
           byAssetClass: [
-            { name: 'Mutual Funds / Equity', count: invs.filter(i => i.asset_type === 'Mutual Fund' || i.asset_type === 'Equity').length || 2, exposure: Math.round(totalVal * 0.55), percentage: 55, riskLevel: 'Moderate Risk', riskColor: 'yellow' },
-            { name: 'Individual Stocks', count: invs.filter(i => i.asset_type === 'Stock').length || 1, exposure: Math.round(totalVal * 0.30), percentage: 30, riskLevel: 'High Risk', riskColor: 'red' },
-            { name: 'Bonds & Fixed Income', count: invs.filter(i => i.asset_type === 'Bond').length || 1, exposure: Math.round(totalVal * 0.15), percentage: 15, riskLevel: 'Low Risk', riskColor: 'green' }
+            { name: 'Equities & Mutual Funds', count: invs.length || 3, exposure: Math.round(totalVal * 0.65), percentage: 65, riskLevel: 'Moderate', riskColor: 'yellow' },
+            { name: 'Fixed Income / Bonds', count: 2, exposure: Math.round(totalVal * 0.25), percentage: 25, riskLevel: 'Low', riskColor: 'green' },
+            { name: 'Cash Reserves', count: 1, exposure: Math.round(totalVal * 0.10), percentage: 10, riskLevel: 'Low', riskColor: 'green' }
           ],
           bySector: [
-            { name: 'Financial Services', count: 2, exposure: Math.round(totalVal * 0.40), percentage: 40, riskLevel: 'Moderate Risk', riskColor: 'yellow' },
-            { name: 'Technology & IT', count: 1, exposure: Math.round(totalVal * 0.35), percentage: 35, riskLevel: 'High Risk', riskColor: 'red' },
-            { name: 'Government Debt & Gold', count: 1, exposure: Math.round(totalVal * 0.25), percentage: 25, riskLevel: 'Low Risk', riskColor: 'green' }
+            { name: 'Technology', count: 2, exposure: Math.round(totalVal * 0.40), percentage: 40, riskLevel: 'High', riskColor: 'red' },
+            { name: 'Financial Services', count: 2, exposure: Math.round(totalVal * 0.30), percentage: 30, riskLevel: 'Moderate', riskColor: 'yellow' },
+            { name: 'Government Securities', count: 1, exposure: Math.round(totalVal * 0.30), percentage: 30, riskLevel: 'Low', riskColor: 'green' }
           ]
         }
       }
@@ -417,6 +373,7 @@ export async function apiFetch(endpoint, options = {}) {
     const simExp = 45000 * expMult;
     const simEmi = 12000 + Number(body.additionalDebt || 0);
 
+    const baseDti = Math.round((12000 / baseIncome) * 100);
     const simDti = Math.round((simEmi / simIncome) * 100);
 
     return {
