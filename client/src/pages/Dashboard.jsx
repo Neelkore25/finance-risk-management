@@ -72,6 +72,8 @@ export function Dashboard() {
       }
     }
     loadDashboardData();
+    window.addEventListener('profileUpdated', loadDashboardData);
+    return () => window.removeEventListener('profileUpdated', loadDashboardData);
   }, []);
 
   if (loading) {

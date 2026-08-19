@@ -1,11 +1,32 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Sparkles, RefreshCw } from 'lucide-react';
+import { Bot, Send, X, Sparkles, RefreshCw, Wand2 } from 'lucide-react';
 import { apiFetch, formatINR } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 
+function extractNumberFromText(text) {
+  if (!text) return null;
+  const str = text.toLowerCase().trim();
+  
+  // Handle '80k', '80.5k'
+  const kMatch = str.match(/(\d+(?:\.\d+)?)\s*k\b/);
+  if (kMatch) return Math.round(parseFloat(kMatch[1]) * 1000);
+
+  // Handle '1 lakh', '1.5 lakhs', '1.5l'
+  const lakhMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:lakh|lakhs|l)\b/);
+  if (lakhMatch) return Math.round(parseFloat(lakhMatch[1]) * 100000);
+
+  // Extract raw digits
+  const cleaned = str.replace(/[^\d.]/g, '');
+  if (cleaned) {
+    const val = parseFloat(cleaned);
+    if (!isNaN(val) && val >= 0) return Math.round(val);
+  }
+
+  return null;
+}
+
 function formatMessageContent(text) {
   if (!text) return null;
-  // Clean out any raw LaTeX formula artifacts if returned
   const cleaned = text
     .replace(/\$\$.*?\$\$/g, '')
     .replace(/\\text\{([^}]+)\}/g, '$1')
@@ -15,7 +36,6 @@ function formatMessageContent(text) {
 
   const lines = cleaned.split('\n');
   return lines.map((line, idx) => {
-    // Parse **bold** markdown tags cleanly
     const parts = line.split(/(\*\*.*?\*\*)/g);
     const renderedLine = parts.map((part, pIdx) => {
       if (part.startsWith('**') && part.endsWith('**')) {
@@ -43,12 +63,24 @@ export function AIRiskAssistant() {
   const [messages, setMessages] = useState([
     {
       sender: 'ai',
-      text: "Hello! I am your AI Finance Risk Assistant. Ask me to explain any financial concept, definition, or analyze your portfolio!"
+      text: "Hello! I am your AI Risk Assistant. I can help set up your profile step-by-step, answer any financial risk questions, or analyze your portfolio!"
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [contextData, setContextData] = useState(null);
+
+  // Guided Setup Wizard State
+  const [wizardStep, setWizardStep] = useState(0); // 0=idle, 1=income, 2=essential_exp, 3=discretionary_exp, 4=debt_emi, 5=savings
+  const [wizardData, setWizardData] = useState({
+    monthly_net_income: 75000,
+    essential_expenses: 30000,
+    discretionary_expenses: 15000,
+    monthly_debt_payments: 12000,
+    liquid_savings: 100000,
+    emergency_fund: 180000
+  });
+
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -74,6 +106,12 @@ export function AIRiskAssistant() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const startSetupWizard = () => {
+    setWizardStep(1);
+    const msg = "👋 **Interactive Profile Setup Wizard**\n\nI will help you feed all your data into the dashboard step-by-step!\n\n**Step 1 of 5**: What is your **Net Monthly Income**? (e.g. 75000, 80k, 1 Lakh)";
+    setMessages(prev => [...prev, { sender: 'ai', text: msg }]);
+  };
 
   const generateLocalAIResponse = (userQuery) => {
     const q = userQuery.toLowerCase().trim();
@@ -117,13 +155,115 @@ export function AIRiskAssistant() {
       return `📊 **Your Personal Financial Risk Summary**:\n\n• **Overall Risk Score**: **${contextData?.personal?.overallScore || 34}/100** (${contextData?.personal?.overallLevel || 'Low Risk'})\n• **Monthly Net Income**: ${formatINR(p.monthlyIncome || 75000)}\n• **Net Cash Flow**: ${formatINR(p.netCashFlow || 18000)}\n• **Debt-to-Income Ratio**: ${p.dtiRatio || 16}%\n• **Emergency Fund**: ${p.emergencyCoverageMonths || 6} Months`;
     }
 
-    return `🤖 **AI Risk Assistant**:\nI can help explain financial concepts in simple terms! Try asking:\n\n• "What is monthly debt service?"\n• "What is Value at Risk (VaR)?"\n• "Explain Credit Risk score"\n• "Analyze my financial risk score"`;
+    return `🤖 **AI Risk Assistant**:\nI am ready to help you! You can:\n\n1. **Setup Data**: Click **"🪄 Setup Profile"** to enter your financial data step-by-step.\n2. **Definitions**: Ask "What is monthly debt service?", "What is VaR?", "Explain Credit Risk"\n3. **Portfolio Analysis**: Ask "Analyze my financial risk score"`;
   };
 
   const handleSend = async (textToSend) => {
     const query = textToSend || input;
     if (!query.trim()) return;
 
+    const lowerQuery = query.toLowerCase().trim();
+
+    // Check if user wants to trigger Guided Setup Wizard
+    if (
+      lowerQuery.includes('setup profile') ||
+      lowerQuery.includes('fill data') ||
+      lowerQuery.includes('put data') ||
+      lowerQuery.includes('step by step') ||
+      lowerQuery.includes('help me put')
+    ) {
+      setMessages(prev => [...prev, { sender: 'user', text: query }]);
+      setInput('');
+      startSetupWizard();
+      return;
+    }
+
+    // Process Wizard Step Progression
+    if (wizardStep > 0) {
+      const newMsgs = [...messages, { sender: 'user', text: query }];
+      setMessages(newMsgs);
+      setInput('');
+
+      const extractedVal = extractNumberFromText(query);
+      if (extractedVal === null) {
+        setMessages([...newMsgs, {
+          sender: 'ai',
+          text: "I couldn't detect a valid amount from your input. Please enter a number (e.g. 75000, 80k, or 1 Lakh)."
+        }]);
+        return;
+      }
+
+      setLoading(true);
+      if (wizardStep === 1) {
+        setWizardData(prev => ({ ...prev, monthly_net_income: extractedVal }));
+        setWizardStep(2);
+        setMessages([...newMsgs, {
+          sender: 'ai',
+          text: `Got it! Monthly Income set to **${formatINR(extractedVal)}**.\n\n**Step 2 of 5**: What are your **Essential Living Expenses** (rent, groceries, bills)?`
+        }]);
+        setLoading(false);
+        return;
+      }
+
+      if (wizardStep === 2) {
+        setWizardData(prev => ({ ...prev, essential_expenses: extractedVal }));
+        setWizardStep(3);
+        setMessages([...newMsgs, {
+          sender: 'ai',
+          text: `Great! Essential Expenses set to **${formatINR(extractedVal)}**.\n\n**Step 3 of 5**: What are your **Discretionary Lifestyle Expenses** (dining out, hobbies)?`
+        }]);
+        setLoading(false);
+        return;
+      }
+
+      if (wizardStep === 3) {
+        setWizardData(prev => ({ ...prev, discretionary_expenses: extractedVal }));
+        setWizardStep(4);
+        setMessages([...newMsgs, {
+          sender: 'ai',
+          text: `Noted! Discretionary Expenses set to **${formatINR(extractedVal)}**.\n\n**Step 4 of 5**: What are your total **Monthly Debt Payments / EMIs** (home loan, car loan, credit card)?`
+        }]);
+        setLoading(false);
+        return;
+      }
+
+      if (wizardStep === 4) {
+        setWizardData(prev => ({ ...prev, monthly_debt_payments: extractedVal }));
+        setWizardStep(5);
+        setMessages([...newMsgs, {
+          sender: 'ai',
+          text: `Got it! Monthly Debt Payments set to **${formatINR(extractedVal)}**.\n\n**Step 5 of 5**: What is your **Total Liquid Savings & Emergency Reserve**?`
+        }]);
+        setLoading(false);
+        return;
+      }
+
+      if (wizardStep === 5) {
+        const finalData = {
+          ...wizardData,
+          liquid_savings: extractedVal,
+          emergency_fund: extractedVal
+        };
+
+        try {
+          await apiFetch('/profile', {
+            method: 'PUT',
+            body: JSON.stringify(finalData)
+          });
+          window.dispatchEvent(new CustomEvent('profileUpdated'));
+        } catch (err) {}
+
+        setWizardStep(0);
+        setMessages([...newMsgs, {
+          sender: 'ai',
+          text: `🎉 **Financial Profile Successfully Configured & Synced to Dashboard!**\n\n• **Monthly Net Income**: ${formatINR(finalData.monthly_net_income)}\n• **Essential Expenses**: ${formatINR(finalData.essential_expenses)}\n• **Discretionary Expenses**: ${formatINR(finalData.discretionary_expenses)}\n• **Monthly Debt Service**: ${formatINR(finalData.monthly_debt_payments)}\n• **Liquid Savings**: ${formatINR(finalData.liquid_savings)}\n\nYour dashboard risk scores and risk indicators have been re-calculated in real time!`
+        }]);
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Standard General Question Answering
     const newMsgs = [...messages, { sender: 'user', text: query }];
     setMessages(newMsgs);
     setInput('');
@@ -153,9 +293,7 @@ export function AIRiskAssistant() {
         setLoading(false);
         return;
       }
-    } catch (err) {
-      // Backend unavailable or mixed content CORS restriction on static page
-    }
+    } catch (err) {}
 
     // Dynamic Intelligent Fallback Response
     const localResponse = generateLocalAIResponse(query);
@@ -204,6 +342,13 @@ export function AIRiskAssistant() {
 
           {/* Quick Prompt Pills */}
           <div className="p-2.5 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 overflow-x-auto flex gap-1.5 no-scrollbar">
+            <button
+              onClick={() => handleSend("Setup Profile")}
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-indigo-600 text-white shadow-sm whitespace-nowrap hover:bg-indigo-500 transition-colors flex items-center gap-1"
+            >
+              <Wand2 className="w-3 h-3 text-amber-300" />
+              🪄 Setup Profile
+            </button>
             <button
               onClick={() => handleSend("What is Value at Risk (VaR)?")}
               className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 whitespace-nowrap hover:bg-sky-200 transition-colors"
@@ -274,7 +419,11 @@ export function AIRiskAssistant() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask any definition or risk question..."
+              placeholder={
+                wizardStep > 0
+                  ? `Step ${wizardStep} of 5: Enter amount (e.g. 75000, 80k, 1 Lakh)...`
+                  : "Ask any question or type 'setup profile'..."
+              }
               className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500"
             />
             <button

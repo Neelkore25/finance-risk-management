@@ -31,6 +31,8 @@ export function Profile() {
       }
     }
     loadProfile();
+    window.addEventListener('profileUpdated', loadProfile);
+    return () => window.removeEventListener('profileUpdated', loadProfile);
   }, []);
 
   const handleChange = (field, val) => {
