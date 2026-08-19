@@ -24,6 +24,8 @@ export function Debt() {
 
   useEffect(() => {
     loadData();
+    window.addEventListener('debtUpdated', loadData);
+    return () => window.removeEventListener('debtUpdated', loadData);
   }, []);
 
   async function loadData() {

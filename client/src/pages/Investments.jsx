@@ -26,6 +26,8 @@ export function Investments() {
 
   useEffect(() => {
     loadInvestments();
+    window.addEventListener('portfolioUpdated', loadInvestments);
+    return () => window.removeEventListener('portfolioUpdated', loadInvestments);
   }, []);
 
   async function loadInvestments() {

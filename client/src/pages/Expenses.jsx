@@ -25,6 +25,8 @@ export function Expenses() {
 
   useEffect(() => {
     loadExpenses();
+    window.addEventListener('expensesUpdated', loadExpenses);
+    return () => window.removeEventListener('expensesUpdated', loadExpenses);
   }, []);
 
   async function loadExpenses() {

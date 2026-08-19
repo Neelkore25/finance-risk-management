@@ -471,3 +471,38 @@ export function updateFinancialProfile(profileData) {
     body: JSON.stringify(profileData)
   });
 }
+
+export function addExpense(expenseData) {
+  return apiFetch('/expenses', {
+    method: 'POST',
+    body: JSON.stringify(expenseData)
+  });
+}
+
+export function addDebt(debtData) {
+  return apiFetch('/debts', {
+    method: 'POST',
+    body: JSON.stringify(debtData)
+  });
+}
+
+export function addPortfolioHolding(holdingData) {
+  return apiFetch('/portfolio', {
+    method: 'POST',
+    body: JSON.stringify(holdingData)
+  });
+}
+
+export function addFinancialGoal(goalData) {
+  return apiFetch('/goals', {
+    method: 'POST',
+    body: JSON.stringify(goalData)
+  });
+}
+
+export function updateCreditParams(creditData) {
+  try {
+    localStorage.setItem('riskguard_credit_params', JSON.stringify(creditData));
+  } catch (err) {}
+  return Promise.resolve({ success: true });
+}

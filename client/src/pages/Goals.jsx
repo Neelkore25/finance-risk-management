@@ -20,6 +20,8 @@ export function Goals() {
 
   useEffect(() => {
     loadGoals();
+    window.addEventListener('goalsUpdated', loadGoals);
+    return () => window.removeEventListener('goalsUpdated', loadGoals);
   }, []);
 
   async function loadGoals() {

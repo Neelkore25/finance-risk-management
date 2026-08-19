@@ -1,25 +1,42 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Sparkles, RefreshCw, Wand2 } from 'lucide-react';
-import { apiFetch, updateFinancialProfile, formatINR } from '../services/apiClient';
+import { Bot, Send, X, Sparkles, RefreshCw, Wand2, CheckCircle2, ArrowRight, SkipForward } from 'lucide-react';
+import { 
+  apiFetch, 
+  updateFinancialProfile, 
+  addExpense, 
+  addDebt, 
+  addPortfolioHolding, 
+  addFinancialGoal, 
+  updateCreditParams, 
+  formatINR 
+} from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 
-function extractNumberFromTextLocal(text) {
-  if (!text) return null;
+function extractNumbersFromTextLocal(text) {
+  if (!text) return [];
   const str = text.toLowerCase().trim();
   
-  const kMatch = str.match(/(\d+(?:\.\d+)?)\s*k\b/);
-  if (kMatch) return Math.round(parseFloat(kMatch[1]) * 1000);
+  const results = [];
+  
+  // Shorthand match 80k, 1.5 lakh
+  const kMatches = [...str.matchAll(/(\d+(?:\.\d+)?)\s*k\b/g)];
+  kMatches.forEach(m => results.push(Math.round(parseFloat(m[1]) * 1000)));
 
-  const lakhMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:lakh|lakhs|l)\b/);
-  if (lakhMatch) return Math.round(parseFloat(lakhMatch[1]) * 100000);
+  const lakhMatches = [...str.matchAll(/(\d+(?:\.\d+)?)\s*(?:lakh|lakhs|l)\b/g)];
+  lakhMatches.forEach(m => results.push(Math.round(parseFloat(m[1]) * 100000)));
 
-  const cleaned = str.replace(/[^\d.]/g, '');
-  if (cleaned) {
-    const val = parseFloat(cleaned);
-    if (!isNaN(val) && val >= 0) return Math.round(val);
+  if (results.length > 0) return results;
+
+  // Raw digits
+  const rawDigits = str.match(/\d+(?:\.\d+)?/g);
+  if (rawDigits) {
+    rawDigits.forEach(d => {
+      const val = parseFloat(d);
+      if (!isNaN(val) && val >= 0) results.push(Math.round(val));
+    });
   }
 
-  return null;
+  return results;
 }
 
 function formatMessageContent(text) {
@@ -37,7 +54,7 @@ function formatMessageContent(text) {
     const renderedLine = parts.map((part, pIdx) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return (
-          <strong key={pIdx} className="font-bold text-sky-400 dark:text-sky-300">
+          <strong key={pIdx} className="font-bold text-[#00F5FF]">
             {part.slice(2, -2)}
           </strong>
         );
@@ -54,12 +71,43 @@ function formatMessageContent(text) {
   });
 }
 
-const STEP_KEYS = [
-  { step: 1, key: 'monthly_income', label: 'Net Monthly Income', prompt: 'What is your Net Monthly Income? (e.g. 75000, 80k, 1 Lakh)' },
-  { step: 2, key: 'monthly_debt', label: 'Monthly Debt Service / EMIs', prompt: 'What are your total Monthly Debt Payments / EMIs? (e.g. home loan, credit card minimums)' },
-  { step: 3, key: 'essential_expenses', label: 'Essential Living Expenses', prompt: 'What are your Essential Monthly Expenses? (rent, groceries, electricity)' },
-  { step: 4, key: 'discretionary_expenses', label: 'Discretionary Lifestyle Expenses', prompt: 'What are your Discretionary Lifestyle Expenses? (dining out, shopping, hobbies)' },
-  { step: 5, key: 'liquid_savings', label: 'Total Liquid Savings & Emergency Fund', prompt: 'What is your Total Liquid Savings & Emergency Reserve?' }
+const STEP_DEFINITIONS = [
+  { 
+    step: 1, 
+    key: 'profile', 
+    title: 'Financial Profile', 
+    prompt: 'What is your total monthly net income and current liquid savings buffer? (e.g. Income 80k, Savings 2 Lakhs)' 
+  },
+  { 
+    step: 2, 
+    key: 'expenses', 
+    title: 'Expense Tracker', 
+    prompt: 'What are your average monthly essential expenses (rent, utilities) and discretionary spending? (e.g. Essential 30k, Discretionary 15k)' 
+  },
+  { 
+    step: 3, 
+    key: 'debt', 
+    title: 'Debt Management', 
+    prompt: 'Do you have any active loan liabilities or debt obligations? (List total outstanding debt & monthly EMI payments, e.g. Debt 5 Lakhs, EMI 12k)' 
+  },
+  { 
+    step: 4, 
+    key: 'portfolio', 
+    title: 'Portfolio Holdings', 
+    prompt: 'What is the total value of your investment portfolio and asset distribution? (e.g. Stocks 2.5 Lakhs, Crypto 50k)' 
+  },
+  { 
+    step: 5, 
+    key: 'credit', 
+    title: 'Credit Risk Parameters', 
+    prompt: 'What is your estimated credit score range or credit tier? (e.g. 750 Good, 800 Excellent, or 650 Fair)' 
+  },
+  { 
+    step: 6, 
+    key: 'goals', 
+    title: 'Financial Goals', 
+    prompt: 'What is your primary short-term or long-term financial goal and target funding amount? (e.g. House Downpayment 10 Lakhs)' 
+  }
 ];
 
 export function AIRiskAssistant() {
@@ -68,21 +116,26 @@ export function AIRiskAssistant() {
   const [messages, setMessages] = useState([
     {
       sender: 'ai',
-      text: "👋 Hi! I can answer any financial definition or help you fill out your dashboard step-by-step. What would you like to do?"
+      text: "👋 Hi! I am your AI Risk Assistant. Click **\"🪄 Start 6-Step Onboarding\"** to set up your dashboard step-by-step or ask any financial risk question!"
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [contextData, setContextData] = useState(null);
 
-  // Dual-Mode Guided Setup Wizard State
-  const [wizardStep, setWizardStep] = useState(0); // 0=idle, 1=income, 2=debt, 3=essential, 4=discretionary, 5=savings
+  // 6-Step Onboarding Wizard State
+  const [wizardStep, setWizardStep] = useState(0); // 0=idle, 1..6
   const [wizardData, setWizardData] = useState({
     monthly_income: 75000,
-    monthly_debt: 12000,
+    liquid_savings: 100000,
     essential_expenses: 30000,
     discretionary_expenses: 15000,
-    liquid_savings: 100000
+    monthly_debt: 12000,
+    total_debt: 500000,
+    portfolio_value: 250000,
+    credit_score: 745,
+    goal_name: 'Emergency Fund',
+    goal_target: 300000
   });
 
   const chatEndRef = useRef(null);
@@ -111,10 +164,37 @@ export function AIRiskAssistant() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const startSetupWizard = () => {
+  const start6StepOnboarding = () => {
     setWizardStep(1);
-    const msg = `🪄 **Guided Onboarding Setup**\n\nI will guide you step-by-step through 5 fields to calculate your risk scores!\n\n**Step 1 of 5**: ${STEP_KEYS[0].prompt}`;
+    const msg = `🪄 **6-Step Interactive Onboarding Wizard**\n\nI will guide you through 6 targeted questions to configure your dashboard in real-time!\n\n**Step 1 of 6 (${STEP_DEFINITIONS[0].title})**:\n${STEP_DEFINITIONS[0].prompt}`;
     setMessages(prev => [...prev, { sender: 'ai', text: msg }]);
+  };
+
+  const handleSkipStep = () => {
+    if (wizardStep === 0) return;
+    const currentStepObj = STEP_DEFINITIONS[wizardStep - 1];
+    const newMsgs = [...messages, { sender: 'user', text: '⏩ Skip Step' }];
+
+    if (wizardStep < 6) {
+      const nextStepObj = STEP_DEFINITIONS[wizardStep];
+      setWizardStep(wizardStep + 1);
+      setMessages([
+        ...newMsgs,
+        {
+          sender: 'ai',
+          text: `Skipped **${currentStepObj.title}**.\n\n**Step ${wizardStep + 1} of 6 (${nextStepObj.title})**:\n${nextStepObj.prompt}`
+        }
+      ]);
+    } else {
+      setWizardStep(0);
+      setMessages([
+        ...newMsgs,
+        {
+          sender: 'ai',
+          text: `🎉 **Onboarding Sequence Complete!** All configured parameters have been live-synced to your dashboard.`
+        }
+      ]);
+    }
   };
 
   const isQuestionQuery = (text) => {
@@ -132,31 +212,13 @@ export function AIRiskAssistant() {
 
   const generateLocalAIResponse = (userQuery) => {
     const q = userQuery.toLowerCase().trim();
-    const p = contextData?.personal?.metrics || {};
-    const cred = contextData?.credit || {};
-    const port = contextData?.portfolio?.metrics || {};
-
-    if (q.includes('monthly debt service') || q.includes('debt service') || q.includes('monthly debt')) {
-      return `💳 **Monthly Debt Service** is the total amount of money you must pay each month toward all active debts and loans (like credit card EMIs, car loans, and home mortgages).\n\n• **Why it matters**: Lenders evaluate this to calculate your Debt-to-Income (DTI) ratio to verify if you can comfortably afford credit.\n• **Best Practice**: Keep total monthly debt payments below 36% of net monthly income.`;
+    if (q.includes('debt service') || q.includes('monthly debt')) {
+      return `💳 **Monthly Debt Service** is the total amount of money you pay each month toward all active loan EMIs and credit cards.\n\n• **DTI Benchmark**: Financial advisors recommend keeping total monthly debt service below 36% of net income.`;
     }
-
-    if (q.includes('what is var') || q.includes('value at risk') || q.includes('explain var')) {
-      return `📈 **Value at Risk (VaR)** is a metric that estimates the maximum potential loss your investment portfolio could face over a specific timeframe under normal market conditions.\n\n• **In simple terms**: It tells you the worst expected loss over 1 day or 1 month.\n• **Why it matters**: Helps investors manage risk and prevent unexpected financial shocks.`;
+    if (q.includes('var') || q.includes('value at risk')) {
+      return `📈 **Value at Risk (VaR)** estimates the maximum potential loss your investment portfolio could face over 1 day or 1 month under normal market conditions.`;
     }
-
-    if (q.includes('credit risk') || q.includes('credit score') || q.includes('default probability')) {
-      return `🏦 **Credit Default Risk** is the likelihood that a borrower might fail to make their required debt payments on time.\n\n• **What affects it**: Income stability, total existing debt, credit card utilization, and repayment history.\n• **Your Score Tier**: **${cred.tier || 'Good'}** (${cred.creditScore || 745}) with an estimated **${((cred.probDefault || 0.08) * 100).toFixed(1)}%** default probability.`;
-    }
-
-    if (q.includes('dti') || q.includes('debt to income') || q.includes('reduce debt') || q.includes('emi')) {
-      return `💳 **Debt-to-Income (DTI) Ratio** compares your total monthly debt payments against your monthly net income.\n\n• **Healthy Goal**: 36% or lower.\n• **How to Reduce It**: Pay off high-interest debts first or consolidate small loans into a lower-rate EMI.\n• **Your Current DTI**: **${p.dtiRatio || 16}%**.`;
-    }
-
-    if (q.includes('what is this project') || q.includes('about app') || q.includes('features')) {
-      return `🛡️ **Finance Risk Analytics Platform** is a personal financial risk workspace that helps you track debt safety (DTI), evaluate credit default risk, analyze portfolio risk (VaR), and test future financial scenarios.`;
-    }
-
-    return `🤖 **AI Risk Assistant**:\nI am ready to help you! You can:\n\n1. **Setup Data**: Click **"🪄 Help Me Setup Profile"** to enter your financial data step-by-step.\n2. **Definitions**: Ask "What is Monthly Debt Service?", "What is VaR?", "Explain Credit Risk Score"`
+    return `🤖 **AI Risk Assistant**: Click **"🪄 Start 6-Step Onboarding"** to set up your financial data step-by-step or ask any risk analytics question.`;
   };
 
   const handleSend = async (textToSend) => {
@@ -166,21 +228,21 @@ export function AIRiskAssistant() {
     const lowerQuery = query.toLowerCase().trim();
     const apiBaseUrl = import.meta.env.VITE_ANALYTICS_API_URL || 'http://localhost:8000';
 
-    // 1. Explicit Trigger for Guided Setup Wizard
+    // 1. Explicit Onboarding Trigger
     if (
+      lowerQuery.includes('onboarding') ||
       lowerQuery.includes('setup profile') ||
-      lowerQuery.includes('fill data') ||
-      lowerQuery.includes('put data') ||
-      lowerQuery.includes('step by step') ||
-      lowerQuery.includes('help me setup')
+      lowerQuery.includes('start step') ||
+      lowerQuery.includes('6-step') ||
+      lowerQuery.includes('fill data')
     ) {
       setMessages(prev => [...prev, { sender: 'user', text: query }]);
       setInput('');
-      startSetupWizard();
+      start6StepOnboarding();
       return;
     }
 
-    // 2. Non-Destructive Question Answer Mode B (Interruption Handling during Wizard or Idle)
+    // 2. Question Interruption during Wizard
     if (isQuestionQuery(query) && wizardStep > 0) {
       const newMsgs = [...messages, { sender: 'user', text: query }];
       setMessages(newMsgs);
@@ -199,112 +261,144 @@ export function AIRiskAssistant() {
           })
         });
         const data = await res.json();
-        reply = data.reply || data.response || generateLocalAIResponse(query);
+        reply = data.reply || generateLocalAIResponse(query);
       } catch (err) {
         reply = generateLocalAIResponse(query);
       }
 
-      const stepPrompt = STEP_KEYS[wizardStep - 1].prompt;
+      const stepObj = STEP_DEFINITIONS[wizardStep - 1];
       setMessages([
         ...newMsgs,
         { sender: 'ai', text: reply },
-        { sender: 'ai', text: `▶️ **Resuming Step ${wizardStep} of 5**: ${stepPrompt}` }
+        { sender: 'ai', text: `▶️ **Resuming Step ${wizardStep} of 6 (${stepObj.title})**:\n${stepObj.prompt}` }
       ]);
       setLoading(false);
       return;
     }
 
-    // 3. Guided Wizard Mode A (Step Value Parsing)
+    // 3. 6-Step Sequential Onboarding Execution Mode A
     if (wizardStep > 0) {
       const newMsgs = [...messages, { sender: 'user', text: query }];
       setMessages(newMsgs);
       setInput('');
       setLoading(true);
 
-      const currentStepObj = STEP_KEYS[wizardStep - 1];
-      let cleanedVal = null;
-      let typoNote = null;
+      const currentStepObj = STEP_DEFINITIONS[wizardStep - 1];
+      const extractedVals = extractNumbersFromTextLocal(query);
 
-      try {
-        const res = await fetch(`${apiBaseUrl}/api/ai/assistant`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: query,
-            mode: 'parse_step',
-            step_key: currentStepObj.key
-          })
-        });
-        const data = await res.json();
-        if (data.valid && data.cleaned_value !== null) {
-          cleanedVal = data.cleaned_value;
-          typoNote = data.detected_typo;
-        }
-      } catch (err) {}
+      let ackBadgeText = '';
 
-      if (cleanedVal === null) {
-        cleanedVal = extractNumberFromTextLocal(query);
+      // STEP 1: Financial Profile (Income & Liquid Savings)
+      if (wizardStep === 1) {
+        const income = extractedVals[0] || 75000;
+        const savings = extractedVals[1] || extractedVals[0] || 100000;
+        const payload = {
+          ...wizardData,
+          monthly_net_income: income,
+          liquid_savings: savings,
+          emergency_fund: savings
+        };
+        setWizardData(payload);
+        await updateFinancialProfile(payload);
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        ackBadgeText = `✓ Updated Financial Profile (Income: ${formatINR(income)}, Savings: ${formatINR(savings)})`;
       }
 
-      if (cleanedVal === null) {
-        setMessages([...newMsgs, {
-          sender: 'ai',
-          text: "I couldn't detect a valid amount. Please enter a value like 75000, 80k, or 1 Lakh."
-        }]);
-        setLoading(false);
-        return;
+      // STEP 2: Expense Tracker (Essential & Discretionary)
+      if (wizardStep === 2) {
+        const essential = extractedVals[0] || 30000;
+        const discretionary = extractedVals[1] || 15000;
+        const payload = {
+          ...wizardData,
+          essential_expenses: essential,
+          discretionary_expenses: discretionary
+        };
+        setWizardData(payload);
+        await updateFinancialProfile(payload);
+        await addExpense({ name: 'Housing & Rent', category: 'Housing', amount: essential, is_essential: true });
+        window.dispatchEvent(new CustomEvent('expensesUpdated'));
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        ackBadgeText = `✓ Updated Expense Tracker (Essential: ${formatINR(essential)}, Discretionary: ${formatINR(discretionary)})`;
       }
 
-      const updatedWizardData = { ...wizardData, [currentStepObj.key]: cleanedVal };
-      setWizardData(updatedWizardData);
-
-      let ackText = `Got it! **${currentStepObj.label}** set to **${formatINR(cleanedVal)}**.`;
-      if (typoNote) {
-        ackText += ` (${typoNote})`;
+      // STEP 3: Debt Management (Total Debt & Monthly EMI)
+      if (wizardStep === 3) {
+        const totalDebt = extractedVals[0] || 500000;
+        const emi = extractedVals[1] || 12000;
+        const payload = {
+          ...wizardData,
+          monthly_debt: emi,
+          total_debt: totalDebt
+        };
+        setWizardData(payload);
+        await updateFinancialProfile({ ...payload, monthly_debt_payments: emi });
+        await addDebt({ name: 'Primary Loan Liability', debt_type: 'Personal Loan', original_amount: totalDebt, outstanding_balance: totalDebt, interest_rate: 10.5, monthly_emi: emi });
+        window.dispatchEvent(new CustomEvent('debtUpdated'));
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        ackBadgeText = `✓ Updated Debt Liabilities (Outstanding: ${formatINR(totalDebt)}, Monthly EMI: ${formatINR(emi)})`;
       }
 
-      if (wizardStep < 5) {
-        const nextStepObj = STEP_KEYS[wizardStep];
+      // STEP 4: Portfolio Holdings (Total Investment & Assets)
+      if (wizardStep === 4) {
+        const portVal = extractedVals[0] || 250000;
+        const payload = { ...wizardData, portfolio_value: portVal };
+        setWizardData(payload);
+        await addPortfolioHolding({ asset_name: 'Diversified Index Fund', asset_type: 'Stocks', quantity: 1, purchase_price: portVal, current_price: portVal });
+        window.dispatchEvent(new CustomEvent('portfolioUpdated'));
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        ackBadgeText = `✓ Updated Portfolio Holdings (Total Value: ${formatINR(portVal)})`;
+      }
+
+      // STEP 5: Credit Risk Parameters (Credit Score Range)
+      if (wizardStep === 5) {
+        const score = extractedVals[0] || 750;
+        const payload = { ...wizardData, credit_score: score };
+        setWizardData(payload);
+        await updateCreditParams({ credit_score: score, tier: score >= 750 ? 'Excellent' : score >= 680 ? 'Good' : 'Fair' });
+        window.dispatchEvent(new CustomEvent('creditUpdated'));
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        ackBadgeText = `✓ Updated Credit Parameters (Estimated Score: ${score})`;
+      }
+
+      // STEP 6: Financial Goals (Short/Long term Goal & Target)
+      if (wizardStep === 6) {
+        const targetAmt = extractedVals[0] || 300000;
+        const goalTitle = query.replace(/\d+/g, '').replace(/lakh|lakhs|k/gi, '').trim() || 'Financial Freedom Reserve';
+        await addFinancialGoal({ goal_name: goalTitle, target_amount: targetAmt, current_savings: 50000, target_date: '2027-12-31' });
+        window.dispatchEvent(new CustomEvent('goalsUpdated'));
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+        ackBadgeText = `✓ Created Financial Goal Card ("${goalTitle}" - ${formatINR(targetAmt)})`;
+      }
+
+      // Progress to Next Step or Complete
+      if (wizardStep < 6) {
+        const nextStepObj = STEP_DEFINITIONS[wizardStep];
         setWizardStep(wizardStep + 1);
         setMessages([
           ...newMsgs,
           {
             sender: 'ai',
-            text: `${ackText}\n\n**Step ${wizardStep + 1} of 5**: ${nextStepObj.prompt}`
+            text: `🟢 **${ackBadgeText}**\n\n**Step ${wizardStep + 1} of 6 (${nextStepObj.title})**:\n${nextStepObj.prompt}`
           }
         ]);
         setLoading(false);
         return;
       }
 
-      // Step 5 Complete -> Save Profile to Supabase & Auto-Sync
-      try {
-        const payload = {
-          monthly_net_income: updatedWizardData.monthly_income,
-          monthly_debt_payments: updatedWizardData.monthly_debt,
-          essential_expenses: updatedWizardData.essential_expenses,
-          discretionary_expenses: updatedWizardData.discretionary_expenses,
-          liquid_savings: updatedWizardData.liquid_savings,
-          emergency_fund: updatedWizardData.liquid_savings
-        };
-
-        await updateFinancialProfile(payload);
-        window.dispatchEvent(new CustomEvent('profileUpdated'));
-      } catch (err) {}
-
+      // Onboarding Finished
       setWizardStep(0);
       setMessages([
         ...newMsgs,
         {
           sender: 'ai',
-          text: `🎉 **Financial Profile Successfully Configured & Synced!**\n\n• **Monthly Net Income**: ${formatINR(updatedWizardData.monthly_income)}\n• **Monthly Debt Service**: ${formatINR(updatedWizardData.monthly_debt)}\n• **Essential Expenses**: ${formatINR(updatedWizardData.essential_expenses)}\n• **Discretionary Expenses**: ${formatINR(updatedWizardData.discretionary_expenses)}\n• **Liquid Savings**: ${formatINR(updatedWizardData.liquid_savings)}\n\nYour live risk scorecards and dashboard metrics have been updated in real-time!`
+          text: `🎉 **6-Step Interactive Onboarding Fully Completed!**\n\n🟢 **${ackBadgeText}**\n\nAll 6 modules (Profile, Expenses, Debts, Portfolio, Credit Risk, and Goals) have been updated live across your active dashboard screens!`
         }
       ]);
       setLoading(false);
       return;
     }
 
-    // 4. Standard QA / Definition Question Mode B
+    // 4. Standard Definition Question Answering Mode B
     const newMsgs = [...messages, { sender: 'user', text: query }];
     setMessages(newMsgs);
     setInput('');
@@ -317,11 +411,7 @@ export function AIRiskAssistant() {
         body: JSON.stringify({
           prompt: query,
           mode: 'chat',
-          user_context: {
-            platform: 'Finance Risk Analytics Platform',
-            overallScore: contextData?.personal?.overallScore || 34,
-            dtiRatio: contextData?.personal?.metrics?.dtiRatio || 16
-          }
+          user_context: { platform: 'Finance Risk Analytics Platform' }
         })
       });
 
@@ -340,7 +430,7 @@ export function AIRiskAssistant() {
 
   return (
     <>
-      {/* Floating Trigger Button — Hidden when Modal is Open */}
+      {/* Floating Trigger Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -354,55 +444,72 @@ export function AIRiskAssistant() {
 
       {/* AI Chat Modal */}
       {isOpen && (
-        <div className="fixed bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] h-[540px] bg-[#0D111A] border border-[#00F5FF]/40 rounded-2xl shadow-[0_0_30px_rgba(0,245,255,0.2)] flex flex-col opacity-100 overflow-hidden font-sans">
-          {/* Header */}
-          <div className="p-4 bg-[#07080D] text-white flex items-center justify-between border-b border-[#00F5FF]/20">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-[#00F5FF]/10 rounded-lg border border-[#00F5FF]/30">
-                <Bot className="w-5 h-5 text-[#00F5FF]" />
+        <div className="fixed bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[430px] h-[560px] bg-[#0D111A] border border-[#00F5FF]/40 rounded-2xl shadow-[0_0_30px_rgba(0,245,255,0.2)] flex flex-col opacity-100 overflow-hidden font-sans">
+          {/* Header with Step Progress Tracker */}
+          <div className="p-4 bg-[#07080D] text-white flex flex-col gap-2 border-b border-[#00F5FF]/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-[#00F5FF]/10 rounded-lg border border-[#00F5FF]/30">
+                  <Bot className="w-5 h-5 text-[#00F5FF]" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-extrabold text-white tracking-wide font-display">AI Risk Assistant</h3>
+                  <span className="text-[10px] text-[#00F5A0] font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00F5A0] animate-ping" />
+                    {wizardStep > 0 ? `Step ${wizardStep} of 6: ${STEP_DEFINITIONS[wizardStep - 1].title}` : 'Gemini 2.5 LLM Active'}
+                  </span>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xs font-extrabold text-white tracking-wide font-display">AI Risk Assistant</h3>
-                <span className="text-[10px] text-[#00F5A0] font-semibold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00F5A0] animate-ping" />
-                  Gemini 2.5 LLM Engine Active
-                </span>
-              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 rounded-lg text-[#A0AEC0] hover:text-white hover:bg-[#1E293B] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg text-[#A0AEC0] hover:text-white hover:bg-[#1E293B] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+
+            {/* Progress Bar when Wizard Active */}
+            {wizardStep > 0 && (
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1">
+                <div 
+                  className="bg-gradient-to-r from-[#00F5FF] to-[#00F5A0] h-full transition-all duration-300 shadow-[0_0_10px_rgba(0,245,255,0.8)]"
+                  style={{ width: `${(wizardStep / 6) * 100}%` }}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Quick Prompt Pills */}
+          {/* Quick Prompt Action Pills */}
           <div className="p-2.5 bg-[#07080D] border-b border-[#00F5FF]/20 overflow-x-auto flex gap-1.5 no-scrollbar">
             <button
-              onClick={() => handleSend("Setup Profile")}
-              className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-[#00F5FF] text-[#0A0B10] shadow-[0_0_10px_rgba(0,245,255,0.4)] whitespace-nowrap hover:bg-[#00F5A0] transition-colors flex items-center gap-1"
+              onClick={start6StepOnboarding}
+              className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-[#00F5FF] text-[#0A0B10] shadow-[0_0_10px_rgba(0,245,255,0.4)] whitespace-nowrap hover:bg-[#00F5A0] transition-colors flex items-center gap-1 shrink-0"
             >
               <Wand2 className="w-3 h-3 text-[#0A0B10]" />
-              🪄 Help Me Setup Profile
+              🪄 Start 6-Step Onboarding
             </button>
+
+            {wizardStep > 0 && (
+              <button
+                onClick={handleSkipStep}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap hover:bg-amber-500/30 transition-colors flex items-center gap-1 shrink-0"
+              >
+                <SkipForward className="w-3 h-3" />
+                ⏩ Skip Step
+              </button>
+            )}
+
             <button
               onClick={() => handleSend("What is Value at Risk (VaR)?")}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#0D111A] text-[#00F5FF] border border-[#00F5FF]/30 whitespace-nowrap hover:bg-[#1E293B] transition-colors"
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#0D111A] text-[#00F5FF] border border-[#00F5FF]/30 whitespace-nowrap hover:bg-[#1E293B] transition-colors shrink-0"
             >
               📈 What is VaR?
             </button>
             <button
               onClick={() => handleSend("What is Monthly Debt Service?")}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#0D111A] text-amber-300 border border-amber-500/30 whitespace-nowrap hover:bg-[#1E293B] transition-colors"
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#0D111A] text-amber-300 border border-amber-500/30 whitespace-nowrap hover:bg-[#1E293B] transition-colors shrink-0"
             >
-              💳 What is Debt Service?
-            </button>
-            <button
-              onClick={() => handleSend("Explain Credit Risk score")}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#0D111A] text-[#00F5A0] border border-[#00F5A0]/30 whitespace-nowrap hover:bg-[#1E293B] transition-colors"
-            >
-              🏦 Credit Risk
+              💳 Debt Service
             </button>
           </div>
 
@@ -452,8 +559,8 @@ export function AIRiskAssistant() {
               onChange={(e) => setInput(e.target.value)}
               placeholder={
                 wizardStep > 0
-                  ? `Step ${wizardStep} of 5: Enter amount or ask a question...`
-                  : "Ask any definition or type 'help me setup profile'..."
+                  ? `Step ${wizardStep} of 6 (${STEP_DEFINITIONS[wizardStep - 1].title}): Enter values...`
+                  : "Ask any definition or click 'Start 6-Step Onboarding'..."
               }
               className="flex-1 px-3 py-2 bg-[#0D111A] border border-[#00F5FF]/30 rounded-xl text-xs text-white placeholder-[#A0AEC0] focus:outline-none focus:border-[#00F5FF]"
             />
