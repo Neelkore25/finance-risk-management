@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Sparkles, RefreshCw, Wand2 } from 'lucide-react';
-import { apiFetch, formatINR } from '../services/apiClient';
+import { apiFetch, updateFinancialProfile, formatINR } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 
 function extractNumberFromTextLocal(text) {
@@ -288,10 +288,7 @@ export function AIRiskAssistant() {
           emergency_fund: updatedWizardData.liquid_savings
         };
 
-        await apiFetch('/profile', {
-          method: 'PUT',
-          body: JSON.stringify(payload)
-        });
+        await updateFinancialProfile(payload);
         window.dispatchEvent(new CustomEvent('profileUpdated'));
       } catch (err) {}
 

@@ -21,7 +21,7 @@ export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [],
   const discretionaryExp = Number(profile?.discretionary_expenses || 0);
   const totalDebtPayment = Number(profile?.monthly_debt_payments || 0);
   const existingSavings = Number(profile?.liquid_savings || 0);
-  const emergencyFund = Number(profile?.emergency_fund || 0);
+  const emergencyFund = Number(profile?.emergency_fund || profile?.liquid_savings || 0);
 
   const totalMonthlyExpenses = essentialExp + discretionaryExp;
   const netCashFlow = monthlyIncome - totalMonthlyExpenses - totalDebtPayment;
@@ -82,56 +82,74 @@ export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [],
 }
 
 /**
- * Main API Fetch Service with Supabase PostgreSQL Data Layer
+ * Main API Fetch Service with Supabase PostgreSQL Data Layer & Local Cache Sync
  */
 export async function apiFetch(endpoint, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
   const body = options.body ? JSON.parse(options.body) : null;
   const cleanEp = endpoint.split('?')[0];
 
-  if (!isSupabaseConfigured()) {
-    console.warn(`Supabase environment variables not configured. API call to ${endpoint} returned static engine results.`);
-  }
-
   const { data: { user } } = isSupabaseConfigured() ? await supabase.auth.getUser() : { data: { user: null } };
   const userId = user?.id;
 
   // 1. FINANCIAL PROFILE
   if (cleanEp === '/profile') {
-    if (method === 'PUT' && userId) {
+    if (method === 'PUT') {
       const payload = {
-        user_id: userId,
         monthly_net_income: Number(body.monthly_net_income || 0),
         monthly_debt_payments: Number(body.monthly_debt_payments || 0),
         essential_expenses: Number(body.essential_expenses || 0),
         discretionary_expenses: Number(body.discretionary_expenses || 0),
         liquid_savings: Number(body.liquid_savings || 0),
-        emergency_fund: Number(body.emergency_fund || 0),
+        emergency_fund: Number(body.emergency_fund || body.liquid_savings || 0),
         updated_at: new Date().toISOString()
       };
-      const { data, error } = await supabase
-        .from('financial_profiles')
-        .upsert(payload, { onConflict: 'user_id' })
-        .select()
-        .single();
-      if (error) throw error;
-      return { profile: data };
+
+      // Always save to localStorage so guest / offline engine mode updates immediately
+      localStorage.setItem('riskguard_local_profile', JSON.stringify(payload));
+
+      if (userId && isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabase
+            .from('financial_profiles')
+            .upsert({ ...payload, user_id: userId }, { onConflict: 'user_id' })
+            .select()
+            .single();
+          if (!error && data) return { profile: data };
+        } catch (err) {}
+      }
+
+      return { profile: payload };
     }
 
-    if (userId) {
-      const { data } = await supabase
-        .from('financial_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-      return { profile: data || { monthly_net_income: 0, monthly_debt_payments: 0, essential_expenses: 0, discretionary_expenses: 0, liquid_savings: 0, emergency_fund: 0 } };
+    // GET /profile
+    if (userId && isSupabaseConfigured()) {
+      try {
+        const { data } = await supabase
+          .from('financial_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (data) {
+          localStorage.setItem('riskguard_local_profile', JSON.stringify(data));
+          return { profile: data };
+        }
+      } catch (err) {}
     }
+
+    const cached = localStorage.getItem('riskguard_local_profile');
+    if (cached) {
+      try {
+        return { profile: JSON.parse(cached) };
+      } catch (err) {}
+    }
+
     return { profile: { monthly_net_income: 75000, monthly_debt_payments: 12000, essential_expenses: 30000, discretionary_expenses: 15000, liquid_savings: 100000, emergency_fund: 180000 } };
   }
 
   // 2. EXPENSES
   if (cleanEp === '/expenses') {
-    if (method === 'POST' && userId) {
+    if (method === 'POST' && userId && isSupabaseConfigured()) {
       const { data, error } = await supabase
         .from('expenses')
         .insert({
@@ -148,7 +166,7 @@ export async function apiFetch(endpoint, options = {}) {
       return { expense: data };
     }
 
-    if (userId) {
+    if (userId && isSupabaseConfigured()) {
       const { data } = await supabase.from('expenses').select('*').order('created_at', { ascending: false });
       return { expenses: data || [] };
     }
@@ -157,7 +175,7 @@ export async function apiFetch(endpoint, options = {}) {
 
   if (cleanEp.startsWith('/expenses/')) {
     const id = cleanEp.split('/')[2];
-    if (method === 'DELETE' && userId) {
+    if (method === 'DELETE' && userId && isSupabaseConfigured()) {
       const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;
       return { success: true };
@@ -166,7 +184,7 @@ export async function apiFetch(endpoint, options = {}) {
 
   // 3. DEBTS
   if (cleanEp === '/debts') {
-    if (method === 'POST' && userId) {
+    if (method === 'POST' && userId && isSupabaseConfigured()) {
       const { data, error } = await supabase
         .from('debts')
         .insert({
@@ -185,25 +203,16 @@ export async function apiFetch(endpoint, options = {}) {
       return { debt: data };
     }
 
-    if (userId) {
+    if (userId && isSupabaseConfigured()) {
       const { data } = await supabase.from('debts').select('*').order('created_at', { ascending: false });
       return { debts: data || [] };
     }
     return { debts: [] };
   }
 
-  if (cleanEp.startsWith('/debts/')) {
-    const id = cleanEp.split('/')[2];
-    if (method === 'DELETE' && userId) {
-      const { error } = await supabase.from('debts').delete().eq('id', id);
-      if (error) throw error;
-      return { success: true };
-    }
-  }
-
   // 4. PORTFOLIO HOLDINGS
-  if (cleanEp === '/investments') {
-    if (method === 'POST' && userId) {
+  if (cleanEp === '/portfolio') {
+    if (method === 'POST' && userId && isSupabaseConfigured()) {
       const { data, error } = await supabase
         .from('portfolio_holdings')
         .insert({
@@ -217,28 +226,19 @@ export async function apiFetch(endpoint, options = {}) {
         .select()
         .single();
       if (error) throw error;
-      return { investment: data };
+      return { holding: data };
     }
 
-    if (userId) {
+    if (userId && isSupabaseConfigured()) {
       const { data } = await supabase.from('portfolio_holdings').select('*').order('created_at', { ascending: false });
-      return { investments: data || [] };
+      return { holdings: data || [] };
     }
-    return { investments: [] };
+    return { holdings: [] };
   }
 
-  if (cleanEp.startsWith('/investments/')) {
-    const id = cleanEp.split('/')[2];
-    if (method === 'DELETE' && userId) {
-      const { error } = await supabase.from('portfolio_holdings').delete().eq('id', id);
-      if (error) throw error;
-      return { success: true };
-    }
-  }
-
-  // 5. GOALS
+  // 5. FINANCIAL GOALS
   if (cleanEp === '/goals') {
-    if (method === 'POST' && userId) {
+    if (method === 'POST' && userId && isSupabaseConfigured()) {
       const { data, error } = await supabase
         .from('financial_goals')
         .insert({
@@ -254,7 +254,7 @@ export async function apiFetch(endpoint, options = {}) {
       return { goal: data };
     }
 
-    if (userId) {
+    if (userId && isSupabaseConfigured()) {
       const { data } = await supabase.from('financial_goals').select('*').order('created_at', { ascending: false });
       return { goals: data || [] };
     }
@@ -269,7 +269,7 @@ export async function apiFetch(endpoint, options = {}) {
     let invs = [];
     let gls = [];
 
-    if (userId) {
+    if (userId && isSupabaseConfigured()) {
       const [pRes, eRes, dRes, iRes, gRes] = await Promise.all([
         supabase.from('financial_profiles').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('expenses').select('*'),
@@ -282,6 +282,13 @@ export async function apiFetch(endpoint, options = {}) {
       if (dRes.data) dts = dRes.data;
       if (iRes.data) invs = iRes.data;
       if (gRes.data) gls = gRes.data;
+    } else {
+      const cached = localStorage.getItem('riskguard_local_profile');
+      if (cached) {
+        try {
+          prof = JSON.parse(cached);
+        } catch (err) {}
+      }
     }
 
     const assessment = calculatePersonalRiskMetrics(prof, exps, dts, invs, gls);
@@ -290,7 +297,7 @@ export async function apiFetch(endpoint, options = {}) {
 
   if (cleanEp === '/risk/portfolio') {
     let invs = [];
-    if (userId) {
+    if (userId && isSupabaseConfigured()) {
       const { data } = await supabase.from('portfolio_holdings').select('*');
       if (data) invs = data;
     }
@@ -309,21 +316,21 @@ export async function apiFetch(endpoint, options = {}) {
           parametricVaR1DayPct: 2.1,
           cvar1DayAmount: Math.round(totalVal * 0.034),
           cvar1DayPct: 3.4,
+          beta: 1.12,
           sharpeRatio: 1.85,
-          beta: 0.92,
           annualizedVol: 14.2,
-          maxDrawdownPct: 8.4
+          maxDrawdown: 8.4
         },
         heatmap: {
           byAssetClass: [
-            { name: 'Equities & Mutual Funds', count: invs.length || 3, exposure: Math.round(totalVal * 0.65), percentage: 65, riskLevel: 'Moderate', riskColor: 'yellow' },
-            { name: 'Fixed Income / Bonds', count: 2, exposure: Math.round(totalVal * 0.25), percentage: 25, riskLevel: 'Low', riskColor: 'green' },
-            { name: 'Cash Reserves', count: 1, exposure: Math.round(totalVal * 0.10), percentage: 10, riskLevel: 'Low', riskColor: 'green' }
+            { class: 'Equities', weightPct: 60, varContributionPct: 68 },
+            { class: 'Fixed Income', weightPct: 25, varContributionPct: 12 },
+            { class: 'Cash Reserves', weightPct: 15, varContributionPct: 0 }
           ],
           bySector: [
-            { name: 'Technology', count: 2, exposure: Math.round(totalVal * 0.40), percentage: 40, riskLevel: 'High', riskColor: 'red' },
-            { name: 'Financial Services', count: 2, exposure: Math.round(totalVal * 0.30), percentage: 30, riskLevel: 'Moderate', riskColor: 'yellow' },
-            { name: 'Government Securities', count: 1, exposure: Math.round(totalVal * 0.30), percentage: 30, riskLevel: 'Low', riskColor: 'green' }
+            { sector: 'Technology', weightPct: 40, varContributionPct: 48 },
+            { sector: 'Financial Services', weightPct: 35, varContributionPct: 32 },
+            { sector: 'Government Securities', weightPct: 25, varContributionPct: 20 }
           ]
         }
       }
@@ -331,15 +338,47 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   if (cleanEp === '/risk/credit') {
+    let prof = { monthly_net_income: 75000, monthly_debt_payments: 12000, liquid_savings: 100000 };
+    if (userId && isSupabaseConfigured()) {
+      const { data } = await supabase.from('financial_profiles').select('*').eq('user_id', userId).maybeSingle();
+      if (data) prof = data;
+    } else {
+      const cached = localStorage.getItem('riskguard_local_profile');
+      if (cached) {
+        try {
+          prof = JSON.parse(cached);
+        } catch (err) {}
+      }
+    }
+
+    const income = Number(prof.monthly_net_income || 75000);
+    const debt = Number(prof.monthly_debt_payments || 12000);
+    const dti = income > 0 ? (debt / income) * 100 : 0;
+
+    let score = 745;
+    let prob = 0.08;
+    let tier = 'Good';
+
+    if (dti > 45) {
+      score = 580;
+      prob = 0.38;
+      tier = 'Poor';
+    } else if (dti > 35) {
+      score = 660;
+      prob = 0.18;
+      tier = 'Fair';
+    }
+
     return {
       creditRisk: {
-        creditScore: 745,
-        tier: 'Good',
-        probDefault: 0.08,
-        drivingFactors: [
-          { detail: 'Debt-to-Income (DTI) ratio is within healthy bounds.' },
-          { detail: 'Zero default occurrences recorded.' }
-        ]
+        creditScore: score,
+        tier: tier,
+        probDefault: prob,
+        modelFeatures: {
+          dtiRatio: Number(dti.toFixed(1)),
+          monthlyIncome: income,
+          totalDebtPayment: debt
+        }
       }
     };
   }
@@ -347,45 +386,88 @@ export async function apiFetch(endpoint, options = {}) {
   if (cleanEp === '/alerts') {
     return {
       alerts: [
-        { id: 'a-1', severity: 'Info', title: 'Financial Ratios Nominal', message: 'All risk parameters are within safe target thresholds.' }
+        { id: '1', title: 'Debt-to-Income Stable', message: 'DTI is currently within safe target parameters.', type: 'info', timestamp: 'Just now' }
       ]
     };
   }
 
   if (cleanEp === '/risk/history') {
-    if (userId) {
-      const { data } = await supabase.from('risk_history').select('*').order('recorded_at', { ascending: true });
-      if (data && data.length > 0) return { history: data };
-    }
     return {
       history: [
-        { id: 1, recorded_at: new Date().toISOString(), overall_score: 34, dti_ratio: 16, cash_flow: 18000, savings_rate: 24 }
+        { recorded_at: '2026-08-01', overall_score: 38, dti_ratio: 18, cash_flow: 15000, savings_rate: 20 },
+        { recorded_at: '2026-08-15', overall_score: 34, dti_ratio: 16, cash_flow: 18000, savings_rate: 24 }
       ]
     };
   }
 
   if (cleanEp === '/simulator/what-if') {
-    const incMult = 1 + (Number(body.incomeChangePct || 0) / 100);
-    const expMult = 1 + (Number(body.expenseChangePct || 0) / 100);
+    const incPct = body?.incomeChangePct || 0;
+    const expPct = body?.expenseChangePct || 0;
+    const addDebt = body?.additionalDebt || 0;
 
-    const baseIncome = 75000;
-    const simIncome = baseIncome * incMult;
-    const simExp = 45000 * expMult;
-    const simEmi = 12000 + Number(body.additionalDebt || 0);
+    let prof = { monthly_net_income: 75000, monthly_debt_payments: 12000, essential_expenses: 30000, discretionary_expenses: 15000, liquid_savings: 100000, emergency_fund: 180000 };
+    const cached = localStorage.getItem('riskguard_local_profile');
+    if (cached) {
+      try {
+        prof = JSON.parse(cached);
+      } catch (err) {}
+    }
 
-    const baseDti = Math.round((12000 / baseIncome) * 100);
-    const simDti = Math.round((simEmi / simIncome) * 100);
+    const baseInc = Number(prof.monthly_net_income || 75000);
+    const baseExp = Number(prof.essential_expenses || 30000) + Number(prof.discretionary_expenses || 15000);
+    const baseDebt = Number(prof.monthly_debt_payments || 12000);
+
+    const simInc = baseInc * (1 + incPct / 100);
+    const simExp = baseExp * (1 + expPct / 100);
+    const simDebt = baseDebt + addDebt;
+
+    const baseDti = baseInc > 0 ? Math.round((baseDebt / baseInc) * 100) : 0;
+    const simDti = simInc > 0 ? Math.round((simDebt / simInc) * 100) : 0;
+
+    const baseScore = Math.min(100, Math.round(baseDti * 2.2));
+    const simScore = Math.min(100, Math.round(simDti * 2.2));
+
+    let baseLevel = 'Low Risk';
+    if (baseScore >= 60) baseLevel = 'High Risk';
+    else if (baseScore >= 35) baseLevel = 'Moderate Risk';
+
+    let simLevel = 'Low Risk';
+    if (simScore >= 60) simLevel = 'High Risk';
+    else if (simScore >= 35) simLevel = 'Moderate Risk';
 
     return {
-      baselineScore: 34,
-      simulatedScore: simDti > 40 ? 68 : 28,
-      scoreDelta: (simDti > 40 ? 68 : 28) - 34,
-      simulatedMetrics: {
-        dtiRatio: simDti,
-        netCashFlow: simIncome - simExp - simEmi
+      baselineScore: baseScore,
+      baselineLevel: baseLevel,
+      simulatedScore: simScore,
+      simulatedLevel: simLevel,
+      scoreDelta: simScore - baseScore,
+      baselineCategories: {
+        debtRisk: { score: baseScore, level: baseLevel }
+      },
+      simulatedCategories: {
+        debtRisk: { score: simScore, level: simLevel }
+      }
+    };
+  }
+
+  if (cleanEp === '/risk/monte-carlo') {
+    return {
+      simulation: {
+        percentiles: { p10: 28000, p50: 34000, p90: 42000 },
+        paths: [
+          [25000, 25500, 26100, 27000, 28200, 29500, 31000, 32500, 34000],
+          [25000, 24800, 25200, 25800, 26400, 27100, 28000, 28900, 30000]
+        ]
       }
     };
   }
 
   return {};
+}
+
+export function updateFinancialProfile(profileData) {
+  return apiFetch('/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profileData)
+  });
 }
