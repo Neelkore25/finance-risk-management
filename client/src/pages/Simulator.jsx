@@ -209,7 +209,7 @@ export function Simulator() {
                   {simResult?.baselineScore} / 100
                 </span>
                 <div className="mt-2">
-                  <RiskBadge level={simResult?.baselineLevel} />
+                  <RiskBadge level={simResult?.baselineLevel} score={simResult?.baselineScore} />
                 </div>
               </div>
 
@@ -219,7 +219,7 @@ export function Simulator() {
                   {simResult?.simulatedScore} / 100
                 </span>
                 <div className="mt-2 flex items-center justify-center gap-2">
-                  <RiskBadge level={simResult?.simulatedLevel} />
+                  <RiskBadge level={simResult?.simulatedLevel} score={simResult?.simulatedScore} />
                   <span className={`text-xs font-bold ${simResult?.scoreDelta <= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     ({simResult?.scoreDelta <= 0 ? `${simResult?.scoreDelta} pts` : `+${simResult?.scoreDelta} pts`})
                   </span>
