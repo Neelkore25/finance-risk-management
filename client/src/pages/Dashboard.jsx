@@ -111,96 +111,96 @@ export function Dashboard() {
     <div className="space-y-6">
       {/* 0. INTERACTIVE USER ONBOARDING GUIDE BANNER */}
       {showGuide && (
-        <div className="opaque-card bg-slate-900 border-sky-800 text-white relative">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="opaque-card bg-white dark:bg-[#0D111A] border border-slate-200 dark:border-[#00F5FF]/20 text-slate-900 dark:text-white relative">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-sky-400" />
-              <h3 className="text-sm font-bold text-white">How to Use Finance Risk Analytics (Quick Guide)</h3>
+              <Sparkles className="w-5 h-5 text-sky-600 dark:text-[#00F5FF]" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white font-display">How to Use Finance Risk Analytics (Quick Guide)</h3>
             </div>
             <button
               onClick={() => setShowGuide(false)}
-              className="text-xs text-slate-400 hover:text-white font-semibold"
+              className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold"
             >
               Dismiss Guide
             </button>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
-            <Link to="/profile" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <User className="w-5 h-5 text-sky-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-white block">1. Profile</span>
-              <span className="text-[10px] text-slate-400">Set Income & Savings</span>
+            <Link to="/profile" className="p-3 bg-slate-50 dark:bg-[#07080D] border border-slate-200 dark:border-slate-800 hover:border-sky-500 dark:hover:border-[#00F5FF]/40 rounded-xl transition-colors block text-center opacity-100">
+              <User className="w-5 h-5 text-sky-600 dark:text-[#00F5FF] mx-auto mb-1" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">1. Profile</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">Set Income & Savings</span>
             </Link>
 
-            <Link to="/expenses" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <Receipt className="w-5 h-5 text-emerald-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-white block">2. Expenses</span>
-              <span className="text-[10px] text-slate-400">Track Monthly Costs</span>
+            <Link to="/expenses" className="p-3 bg-slate-50 dark:bg-[#07080D] border border-slate-200 dark:border-slate-800 hover:border-sky-500 dark:hover:border-[#00F5FF]/40 rounded-xl transition-colors block text-center opacity-100">
+              <Receipt className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">2. Expenses</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">Track Monthly Costs</span>
             </Link>
 
-            <Link to="/debt" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <Landmark className="w-5 h-5 text-rose-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-white block">3. Debts</span>
-              <span className="text-[10px] text-slate-400">Add Loan Liabilities</span>
+            <Link to="/debt" className="p-3 bg-slate-50 dark:bg-[#07080D] border border-slate-200 dark:border-slate-800 hover:border-sky-500 dark:hover:border-[#00F5FF]/40 rounded-xl transition-colors block text-center opacity-100">
+              <Landmark className="w-5 h-5 text-rose-600 dark:text-rose-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">3. Debts</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">Add Loan Liabilities</span>
             </Link>
 
-            <Link to="/investments" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <Briefcase className="w-5 h-5 text-amber-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-white block">4. Portfolio</span>
-              <span className="text-[10px] text-slate-400">Add Stocks & Assets</span>
+            <Link to="/investments" className="p-3 bg-slate-50 dark:bg-[#07080D] border border-slate-200 dark:border-slate-800 hover:border-sky-500 dark:hover:border-[#00F5FF]/40 rounded-xl transition-colors block text-center opacity-100">
+              <Briefcase className="w-5 h-5 text-amber-600 dark:text-amber-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">4. Portfolio</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">Add Stocks & Assets</span>
             </Link>
 
-            <Link to="/credit-risk" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <CreditCard className="w-5 h-5 text-purple-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-white block">5. Credit Risk</span>
-              <span className="text-[10px] text-slate-400">Score Default Risk</span>
+            <Link to="/credit-risk" className="p-3 bg-slate-50 dark:bg-[#07080D] border border-slate-200 dark:border-slate-800 hover:border-sky-500 dark:hover:border-[#00F5FF]/40 rounded-xl transition-colors block text-center opacity-100">
+              <CreditCard className="w-5 h-5 text-purple-600 dark:text-purple-400 mx-auto mb-1" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">5. Credit Risk</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">Score Default Risk</span>
             </Link>
 
-            <Link to="/simulator" className="p-3 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <Sliders className="w-5 h-5 text-cyan-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-white block">6. What-If</span>
-              <span className="text-[10px] text-slate-400">Simulate Stress Test</span>
+            <Link to="/simulator" className="p-3 bg-slate-50 dark:bg-[#07080D] border border-slate-200 dark:border-slate-800 hover:border-sky-500 dark:hover:border-[#00F5FF]/40 rounded-xl transition-colors block text-center opacity-100">
+              <Sliders className="w-5 h-5 text-cyan-600 dark:text-[#00F5FF] mx-auto mb-1" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">6. What-If</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">Simulate Stress Test</span>
             </Link>
           </div>
         </div>
       )}
 
       {/* 1. EXECUTIVE SUMMARY TOP CARD */}
-      <div className="opaque-card bg-slate-900 border-slate-800 text-white relative overflow-hidden">
+      <div className="opaque-card bg-white dark:bg-[#0D111A] border border-slate-200 dark:border-[#00F5FF]/20 text-slate-900 dark:text-white relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="flex items-center gap-3">
-              <ShieldAlert className="w-8 h-8 text-sky-400 stroke-[2.5]" />
+              <ShieldAlert className="w-8 h-8 text-sky-600 dark:text-[#00F5FF] stroke-[2.5]" />
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Overall Financial Risk Score
                 </span>
-                <h1 className="text-3xl font-extrabold flex items-center gap-3">
+                <h1 className="text-3xl font-extrabold flex items-center gap-3 text-slate-900 dark:text-white font-display">
                   <span>{overallScore} / 100</span>
                   <RiskBadge level={overallLevel} />
                 </h1>
               </div>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
               {overallSummary}
             </p>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">
               Last Evaluated: {new Date().toLocaleDateString()} • Powered by Finance Risk Analytics Engine
             </p>
           </div>
 
           <div className="flex flex-wrap lg:flex-col gap-3 w-full lg:w-auto">
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 min-w-[160px]">
-              <span className="text-[11px] text-slate-400 font-semibold block">Monthly Cash Flow</span>
-              <span className={`text-lg font-bold flex items-center gap-1 ${metrics?.netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <div className="bg-slate-100 dark:bg-[#07080D] border border-slate-200 dark:border-slate-800 rounded-xl p-4 min-w-[160px]">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold block">Monthly Cash Flow</span>
+              <span className={`text-lg font-bold flex items-center gap-1 ${metrics?.netCashFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {metrics?.netCashFlow >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                ${Math.abs(metrics?.netCashFlow || 0).toLocaleString()}
+                ₹{Math.abs(metrics?.netCashFlow || 0).toLocaleString('en-IN')}
               </span>
             </div>
 
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 min-w-[160px]">
-              <span className="text-[11px] text-slate-400 font-semibold block">Emergency Reserve</span>
-              <span className="text-lg font-bold text-sky-400">
+            <div className="bg-slate-100 dark:bg-[#07080D] border border-slate-200 dark:border-slate-800 rounded-xl p-4 min-w-[160px]">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold block">Emergency Reserve</span>
+              <span className="text-lg font-bold text-sky-600 dark:text-[#00F5FF]">
                 {metrics?.emergencyCoverageMonths || 0} Months
               </span>
             </div>

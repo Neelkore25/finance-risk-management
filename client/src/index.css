@@ -2,31 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* GLOBAL ANTIGRAVITY DESIGN SYSTEM */
+/* UNIFIED DUAL LIGHT & DARK THEME SYSTEM */
 body {
   font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  @apply bg-[#07080D] text-[#FFFFFF] transition-colors duration-150 selection:bg-[#00F5FF]/30;
+  @apply bg-slate-50 dark:bg-[#090A0F] text-slate-900 dark:text-white transition-colors duration-150 selection:bg-sky-500/20 dark:selection:bg-[#00F5FF]/30;
 }
 
-/* Glassmorphism Surface Container System */
+/* Dynamic Surface Cards for Light & Dark Themes */
 .opaque-card, .antigravity-card {
-  @apply bg-[#0D111A]/90 dark:bg-[#0D111A]/90 border border-[#00F5FF]/20 shadow-[0_0_20px_rgba(0,245,255,0.04)] rounded-2xl p-6 opacity-100 transition-all duration-300 hover:-translate-y-1 hover:border-[#00F5FF]/50 hover:shadow-[0_0_25px_rgba(0,245,255,0.15)];
+  @apply bg-white dark:bg-[#0D111A]/90 border border-slate-200 dark:border-[#00F5FF]/20 shadow-sm dark:shadow-[0_0_20px_rgba(0,245,255,0.04)] rounded-2xl p-6 opacity-100 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 dark:hover:border-[#00F5FF]/50 hover:shadow-md dark:hover:shadow-[0_0_25px_rgba(0,245,255,0.15)];
 }
 
 .opaque-modal-overlay {
-  @apply fixed inset-0 bg-[#07080D]/90 z-50 flex items-center justify-center p-4 backdrop-blur-md;
+  @apply fixed inset-0 bg-slate-950/70 dark:bg-[#07080D]/90 z-50 flex items-center justify-center p-4 backdrop-blur-md;
 }
 
 .opaque-modal-content {
-  @apply bg-[#0D111A] border border-[#00F5FF]/40 shadow-[0_0_40px_rgba(0,245,255,0.2)] rounded-2xl w-full max-w-lg p-6 opacity-100 z-50;
+  @apply bg-white dark:bg-[#0D111A] border border-slate-200 dark:border-[#00F5FF]/40 shadow-2xl dark:shadow-[0_0_40px_rgba(0,245,255,0.2)] rounded-2xl w-full max-w-lg p-6 opacity-100 z-50 text-slate-900 dark:text-white;
 }
 
 .opaque-dropdown {
-  @apply absolute right-0 mt-2 w-56 bg-[#0D111A] border border-[#00F5FF]/30 shadow-[0_0_20px_rgba(0,245,255,0.15)] rounded-xl p-2 z-50 opacity-100;
+  @apply absolute right-0 mt-2 w-56 bg-white dark:bg-[#0D111A] border border-slate-200 dark:border-[#00F5FF]/30 shadow-xl dark:shadow-[0_0_20px_rgba(0,245,255,0.15)] rounded-xl p-2 z-50 opacity-100 text-slate-900 dark:text-white;
 }
 
 .opaque-tooltip {
-  @apply bg-[#0A0B10] text-[#00F5FF] text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg border border-[#00F5FF]/30 opacity-100 z-50;
+  @apply bg-slate-900 dark:bg-[#0A0B10] text-white dark:text-[#00F5FF] text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg border border-slate-700 dark:border-[#00F5FF]/30 opacity-100 z-50;
 }
 
 /* Scrollbar Utility */
@@ -47,5 +47,5 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-[#1E293B] border border-[#00F5FF]/20 rounded-full;
+  @apply bg-slate-300 dark:bg-[#1E293B] border border-transparent dark:border-[#00F5FF]/20 rounded-full;
 }
