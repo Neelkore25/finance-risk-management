@@ -3,6 +3,43 @@ import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 
 const AuthContext = createContext();
 
+// Helper to access Local User Database for strict registration & authentication
+function getUsersDatabase() {
+  try {
+    const raw = localStorage.getItem('riskguard_users_db');
+    if (!raw) {
+      // Initial Seed Database
+      const seed = [
+        {
+          id: 'usr_seed_1',
+          email: 'neelkore25@gmail.com',
+          password_hash: 'password123',
+          full_name: 'Neel Kore',
+          role: 'user'
+        },
+        {
+          id: 'usr_admin_1',
+          email: 'admin@riskguard.com',
+          password_hash: 'admin123',
+          full_name: 'Admin User',
+          role: 'admin'
+        }
+      ];
+      localStorage.setItem('riskguard_users_db', JSON.stringify(seed));
+      return seed;
+    }
+    return JSON.parse(raw);
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveUsersDatabase(users) {
+  try {
+    localStorage.setItem('riskguard_users_db', JSON.stringify(users));
+  } catch (err) {}
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -42,7 +79,12 @@ export function AuthProvider({ children }) {
           if (savedUser) {
             const parsed = JSON.parse(savedUser);
             setUser(parsed);
-            setUserProfile({ id: parsed.id, email: parsed.email, full_name: parsed.user_metadata?.full_name || 'Authenticated User', role: 'user' });
+            setUserProfile({
+              id: parsed.id,
+              email: parsed.email,
+              full_name: parsed.user_metadata?.full_name || 'Authenticated User',
+              role: parsed.role || 'user'
+            });
           } else {
             setUser(null);
             setUserProfile(null);
@@ -79,9 +121,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
+    const cleanEmail = email.toLowerCase().trim();
+
     if (isSupabaseConfigured()) {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
         if (error) throw error;
         setUser(data.user);
         const profile = await fetchUserProfile(data.user.id);
@@ -91,14 +135,28 @@ export function AuthProvider({ children }) {
         throw new Error('Incorrect email or password.');
       }
     } else {
+      // Strict Database Authentication Verification
+      const db = getUsersDatabase();
+      const existingUser = db.find(u => u.email.toLowerCase() === cleanEmail);
+
+      if (!existingUser) {
+        throw new Error('No registered account found with this email address. Please create an account first.');
+      }
+
+      if (existingUser.password_hash !== password) {
+        throw new Error('Incorrect password. Please check your credentials.');
+      }
+
       const sessionUser = {
-        id: `usr_${Date.now()}`,
-        email: email || 'neelkore25@gmail.com',
-        user_metadata: { full_name: email ? email.split('@')[0] : 'Neel Kore' }
+        id: existingUser.id,
+        email: existingUser.email,
+        role: existingUser.role,
+        user_metadata: { full_name: existingUser.full_name }
       };
+
       sessionStorage.setItem('riskguard_auth_user', JSON.stringify(sessionUser));
       setUser(sessionUser);
-      setUserProfile({ id: sessionUser.id, email: sessionUser.email, full_name: sessionUser.user_metadata.full_name, role: 'user' });
+      setUserProfile({ id: sessionUser.id, email: sessionUser.email, full_name: existingUser.full_name, role: existingUser.role });
       return sessionUser;
     }
   };
@@ -119,22 +177,25 @@ export function AuthProvider({ children }) {
       return data;
     } else {
       const googleUser = {
-        id: 'usr_google_auth',
-        email: 'user@gmail.com',
-        user_metadata: { full_name: 'Authenticated Google User' }
+        id: 'usr_google_auth_live',
+        email: 'neelkore25@gmail.com',
+        role: 'user',
+        user_metadata: { full_name: 'Neel Kore (Google Account)' }
       };
       sessionStorage.setItem('riskguard_auth_user', JSON.stringify(googleUser));
       setUser(googleUser);
-      setUserProfile({ id: googleUser.id, email: googleUser.email, full_name: 'Authenticated Google User', role: 'user' });
+      setUserProfile({ id: googleUser.id, email: googleUser.email, full_name: 'Neel Kore', role: 'user' });
       return googleUser;
     }
   };
 
   const register = async (email, password, fullName) => {
+    const cleanEmail = email.toLowerCase().trim();
+
     if (isSupabaseConfigured()) {
       try {
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: cleanEmail,
           password,
           options: {
             data: {
@@ -153,28 +214,56 @@ export function AuthProvider({ children }) {
         throw err;
       }
     } else {
-      const sessionUser = {
+      // Strict Database Registration Verification
+      const db = getUsersDatabase();
+      const existingUser = db.find(u => u.email.toLowerCase() === cleanEmail);
+
+      if (existingUser) {
+        throw new Error('An account with this email address already exists. Please sign in instead.');
+      }
+
+      const newUser = {
         id: `usr_${Date.now()}`,
-        email: email,
-        user_metadata: { full_name: fullName || email.split('@')[0] }
+        email: cleanEmail,
+        password_hash: password,
+        full_name: fullName || cleanEmail.split('@')[0],
+        role: 'user',
+        created_at: new Date().toISOString()
       };
+
+      db.push(newUser);
+      saveUsersDatabase(db);
+
+      const sessionUser = {
+        id: newUser.id,
+        email: newUser.email,
+        role: newUser.role,
+        user_metadata: { full_name: newUser.full_name }
+      };
+
       sessionStorage.setItem('riskguard_auth_user', JSON.stringify(sessionUser));
       setUser(sessionUser);
-      setUserProfile({ id: sessionUser.id, email: sessionUser.email, full_name: sessionUser.user_metadata.full_name, role: 'user' });
+      setUserProfile({ id: sessionUser.id, email: sessionUser.email, full_name: newUser.full_name, role: newUser.role });
       return sessionUser;
     }
   };
 
   const resetPassword = async (email) => {
+    const cleanEmail = email.toLowerCase().trim();
     if (isSupabaseConfigured()) {
       const redirectUrl = window.location.origin + window.location.pathname + '#/login';
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: redirectUrl
       });
       if (error) throw error;
       return data;
     } else {
-      return { message: 'Password reset link sent.' };
+      const db = getUsersDatabase();
+      const existingUser = db.find(u => u.email.toLowerCase() === cleanEmail);
+      if (!existingUser) {
+        throw new Error('No registered account found with this email address.');
+      }
+      return { message: 'Password reset link sent to your registered email.' };
     }
   };
 
