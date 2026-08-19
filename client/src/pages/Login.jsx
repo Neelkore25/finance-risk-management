@@ -41,7 +41,7 @@ export function Login() {
 
   const showToastMsg = (msg, type = 'ok') => {
     setToast({ show: true, msg, type });
-    setTimeout(() => setToast({ show: false, msg: '', type: 'ok' }), 4000);
+    setTimeout(() => setToast({ show: false, msg: '', type: 'ok' }), 5000);
   };
 
   // Password Security Meter calculation
@@ -73,7 +73,11 @@ export function Login() {
       showToastMsg('Connecting to Google Account...', 'ok');
       await googleLogin();
     } catch (err) {
-      showToastMsg(err.message || 'Google sign in failed.', 'error');
+      if (err.message?.includes('provider is not enabled') || err.message?.includes('validation_failed')) {
+        showToastMsg('Google provider is not enabled in Supabase Dashboard. Under Authentication -> Sign In / Providers -> Google, toggle it ON.', 'error');
+      } else {
+        showToastMsg(err.message || 'Google sign in failed.', 'error');
+      }
     }
   };
 
