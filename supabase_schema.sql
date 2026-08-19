@@ -1,8 +1,9 @@
 -- ====================================================================
 -- FINANCE RISK ANALYTICS — AUTHORITATIVE SUPABASE POSTGRESQL SCHEMA
 -- ====================================================================
--- Enable pgcrypto extension for UUID generation
+-- Enable pgcrypto and vector extensions for UUID & RAG Vector Search
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "vector";
 
 -- 1. PROFILES TABLE (Tied 1:1 to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -28,7 +29,7 @@ BEGIN
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
     NEW.raw_user_meta_data->>'avatar_url',
-    'user' -- Hardcoded default: clients CANNOT override role on signup
+    'user'
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
@@ -61,7 +62,7 @@ CREATE TRIGGER check_profile_role_update
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.prevent_profile_role_change();
 
--- 2. FINANCIAL PROFILES TABLE (1:1 per user with UNIQUE constraint)
+-- 2. FINANCIAL PROFILES TABLE
 CREATE TABLE IF NOT EXISTS public.financial_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -154,9 +155,26 @@ CREATE TABLE IF NOT EXISTS public.reports_metadata (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ====================================================================
--- ROW LEVEL SECURITY (RLS) POLICIES
--- ====================================================================
+-- 10. AI KNOWLEDGE BASE TABLE (RAG vector storage)
+CREATE TABLE IF NOT EXISTS public.ai_knowledge_base (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    concept VARCHAR(255) NOT NULL,
+    definition TEXT NOT NULL,
+    embedding VECTOR(768),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 11. AI USER MEMORY TABLE (Contextual learning)
+CREATE TABLE IF NOT EXISTS public.ai_user_memory (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    query TEXT NOT NULL,
+    ai_response TEXT NOT NULL,
+    embedding VECTOR(768),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS POLICIES
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.financial_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
@@ -166,12 +184,11 @@ ALTER TABLE public.financial_goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.risk_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.what_if_scenarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reports_metadata ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_user_memory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_knowledge_base ENABLE ROW LEVEL SECURITY;
 
--- Profiles Policies
 CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
-
--- User-Owned Tables Policies (auth.uid() = user_id)
 CREATE POLICY "Users CRUD own financial_profiles" ON public.financial_profiles FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users CRUD own expenses" ON public.expenses FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users CRUD own debts" ON public.debts FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
@@ -180,10 +197,10 @@ CREATE POLICY "Users CRUD own goals" ON public.financial_goals FOR ALL USING (au
 CREATE POLICY "Users CRUD own risk_history" ON public.risk_history FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users CRUD own what_if_scenarios" ON public.what_if_scenarios FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users CRUD own reports_metadata" ON public.reports_metadata FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users CRUD own ai_user_memory" ON public.ai_user_memory FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Anyone read ai_knowledge_base" ON public.ai_knowledge_base FOR SELECT USING (true);
 
--- ====================================================================
 -- HARDENED ADMIN AGGREGATE FUNCTION
--- ====================================================================
 CREATE OR REPLACE FUNCTION public.get_admin_metrics()
 RETURNS JSON
 LANGUAGE plpgsql
@@ -193,7 +210,6 @@ DECLARE
   caller_role TEXT;
   result JSON;
 BEGIN
-  -- Verify caller is authenticated admin
   SELECT role INTO caller_role FROM public.profiles WHERE id = auth.uid();
   IF caller_role IS DISTINCT FROM 'admin' THEN
     RAISE EXCEPTION 'Unauthorized admin access attempt.';
@@ -219,6 +235,5 @@ BEGIN
 END;
 $$;
 
--- REVOKE EXECUTION FROM PUBLIC / ANON, GRANT TO AUTHENTICATED
 REVOKE EXECUTE ON FUNCTION public.get_admin_metrics() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_admin_metrics() TO authenticated;

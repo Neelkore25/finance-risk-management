@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+import os
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import numpy as np
 import pandas as pd
 
@@ -10,6 +12,27 @@ from quantitative_var import calculate_portfolio_var
 from monte_carlo_engine import run_monte_carlo_gbm
 from personal_risk_engine import compute_personal_risk_assessment
 from analytics.risk_segmentation import fit_risk_segmentation_clusters
+
+# Load environment variables from .env
+load_dotenv()
+
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+
+# Initialize Gemini Client (supporting both google-genai and google-generativeai)
+genai_client = None
+genai_legacy_model = None
+
+if GEMINI_KEY:
+    try:
+        from google import genai
+        genai_client = genai.Client(api_key=GEMINI_KEY)
+    except Exception:
+        try:
+            import google.generativeai as legacy_genai
+            legacy_genai.configure(api_key=GEMINI_KEY)
+            genai_legacy_model = legacy_genai.GenerativeModel("gemini-1.5-flash")
+        except Exception:
+            pass
 
 app = FastAPI(
     title="Finance Risk Analytics Backend Engine",
@@ -51,14 +74,83 @@ class WhatIfRequest(BaseModel):
     expense_change_pct: float = 0.0
     additional_debt_emi: float = 0.0
 
+class AssistantRequest(BaseModel):
+    user_id: str = "guest"
+    prompt: str
+    user_context: Optional[Dict[str, Any]] = {}
+
+SYSTEM_INSTRUCTION = """
+You are an expert Financial Risk AI Assistant embedded in the Finance Risk Analytics platform.
+Your goals:
+1. Explain financial definitions, risk metrics (VaR, Sharpe ratio, Monte Carlo, Debt ratios), and platform concepts clearly with simple examples.
+2. Provide step-by-step mathematical or logical breakdowns when asked.
+3. Keep responses structured using bullet points, short clear sentences, and lightweight markdown formatting.
+4. Format currency figures in Indian Rupees (₹) when referencing user portfolio context.
+"""
+
+def generate_structured_risk_response(query: str, context: dict) -> str:
+    q = query.lower().strip()
+    if 'what is var' in q or 'value at risk' in q:
+        return "📈 **Value at Risk (VaR)** is a statistical metric estimating the maximum expected financial loss in a portfolio over a specific time horizon (e.g. 1 day) at a given confidence level (e.g. 95% or 99%).\n\n• **Historical VaR**: Derived from empirical distribution of daily returns.\n• **Parametric VaR**: Assumes normal distribution: (Mean − z · StdDev) × Portfolio Value.\n• **Monte Carlo VaR**: Vectorized 10,000-path Brownian motion simulation."
+    if 'credit risk' in q or 'default' in q:
+        return "🏦 **Credit Risk Score** estimates the statistical probability that a borrower may default on debt obligations.\n\n• **Model**: Scikit-Learn Logistic Regression & Random Forest\n• **Features Evaluated**: Monthly income, total debt, monthly EMI, liquid savings balance, and credit utilization."
+    if 'dti' in q or 'debt to income' in q:
+        return "💳 **Debt-to-Income (DTI) Ratio** is the percentage of monthly income spent on debt obligations.\n\n• **Formula**: (Monthly EMI / Net Monthly Income) × 100\n• **Healthy Bound**: ≤ 36%\n• **High Risk**: > 50%"
+    return f"🤖 **AI Risk Assistant**:\nBased on Finance Risk Analytics engine:\n\n• You can ask me to explain financial terms like **VaR**, **Sharpe Ratio**, **DTI Ratio**, or **Credit ML**.\n• Or ask me to **Analyze my portfolio risk**."
+
 @app.get("/health")
 def health_check():
     return {
         "status": "healthy",
         "service": "Finance Risk Analytics Python Backend",
         "version": "2.0.0",
-        "engines": ["Pandas", "NumPy", "Scikit-Learn ML", "SciPy VaR", "Monte Carlo GBM"]
+        "gemini_active": bool(genai_client or genai_legacy_model),
+        "engines": ["Pandas", "NumPy", "Scikit-Learn ML", "SciPy VaR", "Monte Carlo GBM", "Gemini 2.5 Flash LLM"]
     }
+
+@app.post("/api/ai/chat")
+async def chat_assistant(req: AssistantRequest):
+    try:
+        q = req.prompt.strip()
+        if not q:
+            return {"status": "success", "reply": "Please provide a valid question or prompt."}
+
+        full_prompt = f"{SYSTEM_INSTRUCTION}\n\nUser Context: {req.user_context}\n\nUser Question: {req.prompt}"
+
+        # 1. Try modern google-genai SDK
+        if genai_client:
+            try:
+                response = genai_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=full_prompt
+                )
+                return {"status": "success", "reply": response.text}
+            except Exception:
+                try:
+                    response = genai_client.models.generate_content(
+                        model="gemini-1.5-flash",
+                        contents=full_prompt
+                    )
+                    return {"status": "success", "reply": response.text}
+                except Exception:
+                    pass
+
+        # 2. Try legacy google-generativeai SDK
+        if genai_legacy_model:
+            try:
+                response = genai_legacy_model.generate_content(full_prompt)
+                return {"status": "success", "reply": response.text}
+            except Exception:
+                pass
+
+        # 3. Dynamic Structured Fallback Engine
+        reply = generate_structured_risk_response(q, req.user_context)
+        return {
+            "status": "success",
+            "reply": reply
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/risk/score")
 def calculate_risk_score(req: RiskScoreRequest):
