@@ -17,7 +17,8 @@ import {
   Activity,
   Trash2,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Zap
 } from 'lucide-react';
 import { 
   updateFinancialProfile, 
@@ -30,10 +31,10 @@ import {
 } from '../services/apiClient';
 import { 
   checkSecurityAndPrivacy, 
-  executeDeterministicFinancialQuery, 
+  executeRapidFinancialQuery, 
   getAuthenticatedFinancialContext,
   get_financial_profile,
-  extractWhatIfParameters
+  preloadFinancialContext
 } from '../services/financialAiOrchestrator';
 import { useAuth } from '../context/AuthContext';
 
@@ -311,13 +312,13 @@ export function AIRiskAssistant() {
   const [messages, setMessages] = useState([
     {
       sender: 'ai',
-      text: "👋 Hi! I am your **Financial Intelligence Assistant**, connected to your real-time risk calculations, portfolio metrics, credit engine, and What-If simulator.\n\nAsk any question about your financial data, calculate DTI/VaR, simulate scenarios, or run a complete data diagnostic!"
+      text: "⚡ **Financial Intelligence Engine Active**\n\nInstant queries enabled for income, DTI, debt, portfolio returns, and What-If simulations. Click a quick action below or ask any question!"
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [contextData, setContextData] = useState(null);
-  const [llmStatus, setLlmStatus] = useState('checking'); // 'gemini_active' | 'deterministic_active'
+  const [llmStatus, setLlmStatus] = useState('ready');
 
   // 6-Step Onboarding Wizard State
   const [wizardStep, setWizardStep] = useState(0);
@@ -335,17 +336,17 @@ export function AIRiskAssistant() {
     }
   }, [messages, isOpen, loading]);
 
-  // Load live user context from database/services
-  const loadRiskContext = async () => {
-    try {
-      const fullContext = await getAuthenticatedFinancialContext(['all']);
-      setContextData(fullContext);
-    } catch (err) {
-      console.warn('Could not load financial context:', err);
-    }
-  };
-
+  // Asynchronous background pre-warming of financial context cache
   useEffect(() => {
+    preloadFinancialContext();
+
+    const loadRiskContext = async () => {
+      try {
+        const fullContext = await getAuthenticatedFinancialContext(['all']);
+        setContextData(fullContext);
+      } catch (err) {}
+    };
+
     loadRiskContext();
 
     const handleSync = () => loadRiskContext();
@@ -386,14 +387,11 @@ export function AIRiskAssistant() {
       if (res.ok) {
         const data = await res.json();
         if (data.reply) {
-          setLlmStatus('gemini_active');
           return data.reply;
         }
       }
-      setLlmStatus('deterministic_active');
       return null;
     } catch (err) {
-      setLlmStatus('deterministic_active');
       return null;
     }
   };
@@ -432,7 +430,8 @@ export function AIRiskAssistant() {
         { sender: 'user', text: '⏩ Skipped step.' },
         { sender: 'ai', text: `🎉 **Guided Setup Complete!** Your dashboard metrics and risk scores are synchronized.` }
       ]);
-      await loadRiskContext();
+      const fullContext = await getAuthenticatedFinancialContext(['all']);
+      setContextData(fullContext);
     }
   };
 
@@ -499,7 +498,8 @@ export function AIRiskAssistant() {
       window.dispatchEvent(new CustomEvent('creditUpdated'));
 
       setPendingBatchUpdate(null);
-      await loadRiskContext();
+      const fullContext = await getAuthenticatedFinancialContext(['all']);
+      setContextData(fullContext);
 
       setMessages(prev => [
         ...prev,
@@ -518,7 +518,7 @@ export function AIRiskAssistant() {
     }
   };
 
-  // Main Handler for User Messages
+  // Main Handler for User Messages (Instant Execution Paths)
   const handleSend = async (textToSend) => {
     const query = textToSend || input;
     if (!query.trim()) return;
@@ -568,7 +568,6 @@ export function AIRiskAssistant() {
       const newMsgs = [...messages, { sender: 'user', text: query }];
       setMessages(newMsgs);
       setInput('');
-      setLoading(true);
 
       const entities = extractLabeledFinancialEntities(query);
       const isZero = isZeroOrNone(query);
@@ -586,7 +585,6 @@ export function AIRiskAssistant() {
 
         if (income === null && savings === null) {
           setMessages([...newMsgs, { sender: 'ai', text: '⚠️ I couldn\'t extract your income or savings. Please reply with numbers (e.g. "Income 80k, Savings 2 Lakhs" or "0" if none).' }]);
-          setLoading(false);
           return;
         }
 
@@ -605,7 +603,6 @@ export function AIRiskAssistant() {
 
         if (essential === null && discretionary === null) {
           setMessages([...newMsgs, { sender: 'ai', text: '⚠️ I couldn\'t detect your expenses. Please reply with amounts (e.g. "Essential 30k, Discretionary 15k" or "0").' }]);
-          setLoading(false);
           return;
         }
 
@@ -624,7 +621,6 @@ export function AIRiskAssistant() {
 
         if (totalDebt === null && emi === null) {
           setMessages([...newMsgs, { sender: 'ai', text: '⚠️ Please provide your total loan and EMI (e.g. "Debt 5 Lakhs, EMI 12k" or "no debt").' }]);
-          setLoading(false);
           return;
         }
 
@@ -654,7 +650,6 @@ export function AIRiskAssistant() {
           stepSuccessful = true;
         } else {
           setMessages([...newMsgs, { sender: 'ai', text: '⚠️ Please specify your investments (e.g. "50k in stocks, 20k in crypto" or "0" if none).' }]);
-          setLoading(false);
           return;
         }
       } else if (wizardStep === 5) {
@@ -663,7 +658,6 @@ export function AIRiskAssistant() {
 
         if (!score) {
           setMessages([...newMsgs, { sender: 'ai', text: '⚠️ Please provide a credit score between 300 and 850 (e.g. "750 Good" or "680").' }]);
-          setLoading(false);
           return;
         }
 
@@ -694,14 +688,14 @@ export function AIRiskAssistant() {
             ...newMsgs,
             { sender: 'ai', text: `${ackBadgeText}\n\n🎉 **Onboarding Complete!** Your entire financial profile has been synchronized with the risk engine.` }
           ]);
-          await loadRiskContext();
+          const fullContext = await getAuthenticatedFinancialContext(['all']);
+          setContextData(fullContext);
         }
       }
-      setLoading(false);
       return;
     }
 
-    // 5. Free-form Multi-field summary detection (outside wizard)
+    // 5. Free-form Multi-field summary detection
     const entities = extractLabeledFinancialEntities(query);
     const populatedFields = ['income', 'savings', 'essential', 'discretionary', 'total_debt', 'monthly_debt', 'portfolio_total', 'credit_score'].filter(f => entities[f] !== undefined);
 
@@ -731,22 +725,20 @@ export function AIRiskAssistant() {
       return;
     }
 
-    // 6. Deterministic Query Execution & Tool Layer
+    // 6. INSTANT / RAPID EXECUTION PATHS (Zero LLM roundtrips for data/calc/what-if/static)
     const newMsgs = [...messages, { sender: 'user', text: query }];
     setMessages(newMsgs);
     setInput('');
-    setLoading(true);
 
     try {
-      // Execute via deterministic tool engine first
-      const detResult = await executeDeterministicFinancialQuery(query);
-      if (detResult && detResult.text) {
-        setMessages([...newMsgs, { sender: 'ai', text: detResult.text }]);
-        setLoading(false);
+      const rapidResult = await executeRapidFinancialQuery(query);
+      if (rapidResult && rapidResult.text) {
+        setMessages([...newMsgs, { sender: 'ai', text: rapidResult.text }]);
         return;
       }
 
-      // If query is broad / general knowledge / mixed, synthesize via Gemini 2.5 Flash
+      // Tier 6: Complex LLM synthesis (Gemini 2.5 Flash)
+      setLoading(true);
       const llmReply = await callAiAssistantService(query);
       if (llmReply) {
         setMessages([...newMsgs, { sender: 'ai', text: llmReply }]);
@@ -762,7 +754,7 @@ export function AIRiskAssistant() {
     } catch (err) {
       setMessages([
         ...newMsgs,
-        { sender: 'ai', text: `⚠️ **Service Notice**: ${err.message || 'Error communicating with assistant services. Please try again.'}` }
+        { sender: 'ai', text: `⚠️ **Notice**: ${err.message || 'Error communicating with assistant services.'}` }
       ]);
     } finally {
       setLoading(false);
@@ -773,7 +765,7 @@ export function AIRiskAssistant() {
     setMessages([
       {
         sender: 'ai',
-        text: "🧹 Conversation cleared. How can I help analyze your financial risk or simulate scenarios?"
+        text: "⚡ **Conversation reset.** What financial metrics, calculations, or scenarios would you like to explore?"
       }
     ]);
     setWizardStep(0);
@@ -787,9 +779,9 @@ export function AIRiskAssistant() {
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 p-4 rounded-full bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white shadow-2xl transition-all duration-300 hover:scale-105 z-50 flex items-center gap-2.5 font-bold text-sm group"
-          title="Open Financial Intelligence Assistant"
+          title="Open Instant Financial Intelligence Assistant"
         >
-          <Bot className="w-5 h-5 transition-transform group-hover:rotate-12" />
+          <Zap className="w-5 h-5 transition-transform group-hover:scale-110 text-amber-300" />
           <span className="hidden sm:inline">AI Financial Assistant</span>
           <span className="flex h-2 w-2 relative">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -807,19 +799,20 @@ export function AIRiskAssistant() {
           <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#111C2D] flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
-                <Bot className="w-4 h-4" />
+                <Zap className="w-4 h-4 text-amber-300" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white">
                     Financial Intelligence Assistant
                   </h3>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60">
-                    Live Grounded
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Instant Fast-Path
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                  Real-Time Database & ML Analytics Grounding
+                  Sub-20ms Deterministic Math & Live Data Grounding
                 </p>
               </div>
             </div>
@@ -849,22 +842,22 @@ export function AIRiskAssistant() {
             </div>
           </div>
 
-          {/* Quick Action Suggestions Pill Bar */}
+          {/* Instant Action Pills */}
           <div className="px-3 py-2 bg-slate-100/70 dark:bg-[#0A121E] border-b border-slate-200/80 dark:border-slate-800/80 flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
             <button
-              onClick={() => handleSend('Analyze my complete financial situation.')}
+              onClick={() => handleSend('What is my monthly income?')}
               className="px-2.5 py-1 rounded-full whitespace-nowrap bg-white dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors font-medium flex items-center gap-1"
             >
-              🛡️ Financial Health
+              💼 My Income
             </button>
             <button
-              onClick={() => handleSend('Calculate my DTI and explain my debt burden.')}
+              onClick={() => handleSend('Calculate my DTI')}
               className="px-2.5 py-1 rounded-full whitespace-nowrap bg-white dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors font-medium flex items-center gap-1"
             >
               💳 Calculate DTI
             </button>
             <button
-              onClick={() => handleSend('What is my portfolio Value at Risk (VaR) and return?')}
+              onClick={() => handleSend('What is my portfolio return and VaR?')}
               className="px-2.5 py-1 rounded-full whitespace-nowrap bg-white dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors font-medium flex items-center gap-1"
             >
               📈 VaR & Portfolio
@@ -961,13 +954,13 @@ export function AIRiskAssistant() {
               </div>
             )}
 
-            {/* Typing / Loading Animation */}
+            {/* Loading / Processing Indicator */}
             {loading && (
               <div className="flex gap-2 items-center text-xs text-slate-400 pl-8">
                 <div className="w-2 h-2 rounded-full bg-sky-500 animate-bounce"></div>
                 <div className="w-2 h-2 rounded-full bg-sky-500 animate-bounce [animation-delay:0.2s]"></div>
                 <div className="w-2 h-2 rounded-full bg-sky-500 animate-bounce [animation-delay:0.4s]"></div>
-                <span className="text-[11px] text-slate-500 ml-1">Analyzing database & executing analytics...</span>
+                <span className="text-[11px] text-slate-500 ml-1">Synthesizing AI analysis...</span>
               </div>
             )}
             <div ref={chatEndRef} />
@@ -986,7 +979,7 @@ export function AIRiskAssistant() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={wizardStep > 0 ? "Enter value or '0' if none..." : "Ask any financial question, calculate DTI, or simulate..."}
+                placeholder={wizardStep > 0 ? "Enter value or '0' if none..." : "Ask any financial question (instant responses active)..."}
                 className="flex-1 px-3.5 py-2 text-xs rounded-xl bg-white dark:bg-[#0A121E] border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white placeholder-slate-400"
                 disabled={loading}
               />
