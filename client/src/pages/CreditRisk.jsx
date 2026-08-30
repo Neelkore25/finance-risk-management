@@ -78,10 +78,10 @@ export function CreditRisk() {
       </div>
 
       {/* Educational Disclaimer Banner */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs flex items-center gap-3 opacity-100">
-        <Info className="w-5 h-5 text-emerald-400 shrink-0" />
+      <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs flex items-center gap-3">
+        <Info className="w-5 h-5 text-emerald-500 dark:text-emerald-400 shrink-0" />
         <div>
-          <span className="font-extrabold text-white block">Educational Model Disclaimer</span>
+          <span className="font-extrabold text-slate-900 dark:text-white block">Educational Model Disclaimer</span>
           <span>
             This module provides an educational credit-scoring simulation using documented mathematical logistic regression. It does not represent an official FICO or credit bureau score.
           </span>

@@ -23,11 +23,11 @@ export function GoogleAuthModal({ isOpen, onClose, onSelectAccount }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950 opacity-100 z-50 flex items-center justify-center p-4">
-      {/* 100% Solid Opaque Google Account Chooser Box */}
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 opacity-100 space-y-6 text-white">
+    <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {/* Google Account Chooser Box */}
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 text-slate-900 dark:text-white">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-3">
             <svg className="w-6 h-6" viewBox="0 0 24 24">
               <path
@@ -48,13 +48,13 @@ export function GoogleAuthModal({ isOpen, onClose, onSelectAccount }) {
               />
             </svg>
             <div>
-              <h3 className="text-sm font-extrabold text-white">Sign in with Google</h3>
-              <p className="text-[11px] text-slate-400">Choose an account to continue</p>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Sign in with Google</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Choose an account to continue</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -67,26 +67,26 @@ export function GoogleAuthModal({ isOpen, onClose, onSelectAccount }) {
               <button
                 key={acc.email}
                 onClick={() => onSelectAccount(acc)}
-                className="w-full p-3.5 bg-slate-950 border border-slate-800 hover:border-sky-500 rounded-2xl flex items-center justify-between text-left transition-colors opacity-100 group"
+                className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-sky-500 rounded-2xl flex items-center justify-between text-left transition-colors group shadow-sm"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-sky-600 text-white font-extrabold text-sm flex items-center justify-center border border-sky-400">
                     {acc.avatar}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white group-hover:text-sky-400 transition-colors">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
                       {acc.name}
                     </h4>
-                    <p className="text-[11px] text-slate-400">{acc.email}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{acc.email}</p>
                   </div>
                 </div>
-                <Check className="w-4 h-4 text-sky-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Check className="w-4 h-4 text-sky-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             ))}
 
             <button
               onClick={() => setShowAdd(true)}
-              className="w-full p-3 bg-slate-950 border border-dashed border-slate-700 hover:border-sky-500 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold text-sky-400 transition-colors opacity-100 mt-2"
+              className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700 hover:border-sky-500 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 transition-colors mt-2"
             >
               <Plus className="w-4 h-4" />
               Use another Google account
@@ -95,25 +95,25 @@ export function GoogleAuthModal({ isOpen, onClose, onSelectAccount }) {
         ) : (
           <form onSubmit={handleCustomSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Full Name</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
               <input
                 type="text"
                 required
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
                 placeholder="e.g. Neel Kore"
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Google Email Address</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Google Email Address</label>
               <input
                 type="email"
                 required
                 value={customEmail}
                 onChange={(e) => setCustomEmail(e.target.value)}
                 placeholder="name@gmail.com"
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500"
               />
             </div>
 
@@ -121,7 +121,7 @@ export function GoogleAuthModal({ isOpen, onClose, onSelectAccount }) {
               <button
                 type="button"
                 onClick={() => setShowAdd(false)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-colors"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl transition-colors"
               >
                 Back
               </button>

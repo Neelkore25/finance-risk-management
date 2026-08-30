@@ -213,18 +213,18 @@ export function Simulator() {
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-blue-950/40 dark:bg-sky-950/40 border border-[#2563EB] dark:border-[#0EA5E9] text-center opacity-100 space-y-2">
-                <span className="text-xs font-bold text-[#2563EB] dark:text-[#0EA5E9] uppercase block tracking-wider">Simulated Score</span>
-                <span className="text-5xl sm:text-6xl font-extrabold text-white font-mono tabular-nums block">
+              <div className="p-5 rounded-2xl bg-blue-50 dark:bg-sky-950/40 border border-blue-200 dark:border-[#0EA5E9] text-center space-y-2">
+                <span className="text-xs font-bold text-blue-600 dark:text-[#0EA5E9] uppercase block tracking-wider">Simulated Score</span>
+                <span className="text-5xl sm:text-6xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums block">
                   {simResult?.simulatedScore}<span className="text-2xl text-slate-400 font-sans">/100</span>
                 </span>
                 <div className="pt-2 flex items-center justify-center gap-2">
                   <RiskBadge level={simResult?.simulatedLevel} score={simResult?.simulatedScore} />
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${simResult?.scoreDelta <= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${simResult?.scoreDelta <= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'}`}>
                     ({simResult?.scoreDelta <= 0 ? `${simResult?.scoreDelta} pts` : `+${simResult?.scoreDelta} pts`})
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 block pt-1">💡 Delta indicates risk score shift</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block pt-1">💡 Delta indicates risk score shift</span>
               </div>
             </div>
 

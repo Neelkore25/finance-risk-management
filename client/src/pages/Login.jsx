@@ -174,22 +174,22 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#080F1A] text-[#F8FAFC] flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-x-hidden font-sans">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-[#080F1A] text-slate-900 dark:text-[#F8FAFC] flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-x-hidden font-sans transition-colors duration-150">
       {/* Toast Notification */}
       <div
         className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl font-semibold text-xs shadow-2xl flex items-center gap-2.5 border transition-all duration-300 ${
           toast.show ? 'translate-y-0 opacity-100' : '-translate-y-16 opacity-0'
         } ${
           toast.type === 'ok'
-            ? 'bg-[#111D2B] border-emerald-500/40 text-emerald-300'
-            : 'bg-[#111D2B] border-rose-500/40 text-rose-300'
+            ? 'bg-white dark:bg-[#111D2B] border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
+            : 'bg-white dark:bg-[#111D2B] border-rose-500/40 text-rose-700 dark:text-rose-300'
         }`}
       >
         <span className="shrink-0 p-1 rounded-full bg-current/10">
           {toast.type === 'ok' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
           ) : (
-            <AlertCircle className="w-4 h-4 text-rose-400" />
+            <AlertCircle className="w-4 h-4 text-rose-500 dark:text-rose-400" />
           )}
         </span>
         <span>{toast.msg}</span>
@@ -198,10 +198,10 @@ export function Login() {
       {/* Theme Toggle Button */}
       <button
         onClick={toggleTheme}
-        className="absolute top-6 right-6 p-2.5 rounded-xl bg-[#0D1724] border border-white/10 text-slate-400 hover:text-white transition-colors"
+        className="absolute top-6 right-6 p-2.5 rounded-xl bg-slate-100 dark:bg-[#0D1724] border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-sm"
         title="Toggle theme"
       >
-        {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-300" />}
+        {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
       </button>
 
       {/* DUAL COLUMN CONTAINER */}
@@ -213,55 +213,55 @@ export function Login() {
               <Shield className="w-6 h-6 text-white stroke-[2.5]" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold text-white tracking-wider font-display uppercase">
-                FINANCE <span className="text-blue-500">RISK</span> ANALYTICS
+              <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-wider font-display uppercase">
+                FINANCE <span className="text-blue-600 dark:text-blue-500">RISK</span> ANALYTICS
               </h1>
-              <p className="text-xs text-slate-400 font-semibold tracking-wider uppercase mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold tracking-wider uppercase mt-0.5">
                 Credit Risk Prediction & Analytics Platform
               </p>
             </div>
           </div>
 
           <div className="space-y-4 pt-2">
-            <h2 className="text-3xl font-extrabold text-white font-display leading-tight">
+            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white font-display leading-tight">
               Enterprise Risk Intelligence & Quantitative Financial Analytics
             </h2>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
               Real-time loan portfolio default predictions, statistical Value at Risk (VaR), stress simulation, and credit risk analytics built for financial institutions.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
-            <div className="p-3 rounded-xl bg-[#111D2B] border border-white/10">
-              <span className="text-xs font-bold text-blue-400 block">Quantitative Engine</span>
-              <span className="text-[11px] text-slate-400">Logistic ML & SciPy VaR Models</span>
+          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200 dark:border-white/10">
+            <div className="p-3 rounded-xl bg-white dark:bg-[#111D2B] border border-slate-200 dark:border-white/10 shadow-sm">
+              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 block">Quantitative Engine</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">Logistic ML & SciPy VaR Models</span>
             </div>
-            <div className="p-3 rounded-xl bg-[#111D2B] border border-white/10">
-              <span className="text-xs font-bold text-emerald-400 block">Bank-Grade Security</span>
-              <span className="text-[11px] text-slate-400">Supabase RLS & PostgreSQL</span>
+            <div className="p-3 rounded-xl bg-white dark:bg-[#111D2B] border border-slate-200 dark:border-white/10 shadow-sm">
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">Bank-Grade Security</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">Supabase RLS & PostgreSQL</span>
             </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN: CENTERED LOGIN CARD */}
-        <div className="lg:col-span-6 w-full max-w-[440px] mx-auto bg-[#111D2B] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl">
+        <div className="lg:col-span-6 w-full max-w-[440px] mx-auto bg-white dark:bg-[#111D2B] border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl dark:shadow-2xl">
           {/* Header Logo (Mobile View) */}
           <div className="flex items-center justify-center gap-3 mb-6 lg:hidden">
             <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
               <Shield className="w-5 h-5 text-white stroke-[2.5]" />
             </div>
             <div>
-              <div className="text-base font-extrabold text-white tracking-wide font-display uppercase">
-                FINANCE <span className="text-blue-500">RISK</span> ANALYTICS
+              <div className="text-base font-extrabold text-slate-900 dark:text-white tracking-wide font-display uppercase">
+                FINANCE <span className="text-blue-600 dark:text-blue-500">RISK</span> ANALYTICS
               </div>
-              <div className="text-[9.5px] tracking-[2px] text-slate-400 font-bold uppercase mt-0.5">
+              <div className="text-[9.5px] tracking-[2px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-0.5">
                 Credit Risk Analytics Platform
               </div>
             </div>
           </div>
 
         {/* Tab Switcher */}
-        <div className="relative flex p-1 bg-slate-950 border border-slate-800 rounded-xl mb-6">
+        <div className="relative flex p-1 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl mb-6">
           <div
             className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-gradient-to-r from-sky-500 to-cyan-400 rounded-lg shadow-lg shadow-sky-500/30 transition-transform duration-300 ease-out ${
               activeTab === 'register' ? 'translate-x-[calc(100%+8px)]' : 'translate-x-0'
@@ -271,7 +271,7 @@ export function Login() {
             type="button"
             onClick={() => setActiveTab('login')}
             className={`flex-1 py-2 text-xs font-bold transition-colors z-10 ${
-              activeTab === 'login' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
+              activeTab === 'login' ? 'text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             Sign In
@@ -280,7 +280,7 @@ export function Login() {
             type="button"
             onClick={() => setActiveTab('register')}
             className={`flex-1 py-2 text-xs font-bold transition-colors z-10 ${
-              activeTab === 'register' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
+              activeTab === 'register' ? 'text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             Create Account
@@ -291,14 +291,14 @@ export function Login() {
         {activeTab === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div>
-              <h2 className="text-xl font-bold text-white font-display">Welcome back</h2>
-              <p className="text-xs text-slate-400 mt-1 mb-4">Sign in to your risk workspace to continue.</p>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">Welcome back</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4">Sign in to your risk workspace to continue.</p>
 
               {/* Official Google Sign In Button */}
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                className="w-full py-2.5 px-4 bg-slate-950 hover:bg-slate-800 text-slate-200 font-semibold text-xs rounded-xl border border-slate-800 flex items-center justify-center gap-3 transition-colors shadow-sm mb-4"
+                className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 transition-colors shadow-sm mb-4"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" />
@@ -310,66 +310,66 @@ export function Login() {
               </button>
 
               <div className="relative flex py-1 items-center mb-2">
-                <div className="flex-grow border-t border-slate-800" />
-                <span className="flex-shrink mx-3 text-[10px] text-slate-500 font-bold uppercase tracking-wider">or sign in with email</span>
-                <div className="flex-grow border-t border-slate-800" />
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
+                <span className="flex-shrink mx-3 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">or sign in with email</span>
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300">Email</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Email</label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
+                <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type="email"
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="you@company.com"
-                  className={`w-full pl-9 pr-3 py-2.5 bg-slate-950 border rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
-                    loginEmailErr ? 'border-rose-500/60' : 'border-slate-800'
+                  className={`w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
+                    loginEmailErr ? 'border-rose-500/60' : 'border-slate-200 dark:border-slate-800'
                   }`}
                 />
               </div>
-              {loginEmailErr && <p className="text-[11px] text-rose-400">{loginEmailErr}</p>}
+              {loginEmailErr && <p className="text-[11px] text-rose-500 dark:text-rose-400">{loginEmailErr}</p>}
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-300">Password</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Password</label>
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-[11px] font-semibold text-cyan-400 hover:underline"
+                  className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
                 >
                   Forgot password?
                 </button>
               </div>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
+                <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type={showLoginPassword ? 'text' : 'password'}
                   required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className={`w-full pl-9 pr-9 py-2.5 bg-slate-950 border rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
-                    loginPasswordErr ? 'border-rose-500/60' : 'border-slate-800'
+                  className={`w-full pl-9 pr-9 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
+                    loginPasswordErr ? 'border-rose-500/60' : 'border-slate-200 dark:border-slate-800'
                   }`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  className="absolute right-3 top-3 text-slate-500 hover:text-cyan-400 transition-colors"
+                  className="absolute right-3 top-3 text-slate-400 dark:text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
                 >
                   {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {loginPasswordErr && <p className="text-[11px] text-rose-400">{loginPasswordErr}</p>}
+              {loginPasswordErr && <p className="text-[11px] text-rose-500 dark:text-rose-400">{loginPasswordErr}</p>}
             </div>
 
             <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 text-slate-400 cursor-pointer select-none">
+              <label className="flex items-center gap-2 text-slate-600 dark:text-slate-400 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={rememberMe}
@@ -388,12 +388,12 @@ export function Login() {
               {loginLoading ? 'Signing In...' : 'Sign In'}
             </button>
 
-            <div className="text-center text-xs text-slate-400 pt-4">
+            <div className="text-center text-xs text-slate-600 dark:text-slate-400 pt-4">
               Don't have an account?{' '}
               <button
                 type="button"
                 onClick={() => setActiveTab('register')}
-                className="text-cyan-400 font-bold hover:underline"
+                className="text-cyan-600 dark:text-cyan-400 font-bold hover:underline"
               >
                 Create one
               </button>
@@ -405,14 +405,14 @@ export function Login() {
         {activeTab === 'register' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-3.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div>
-              <h2 className="text-xl font-bold text-white font-display">Create your account</h2>
-              <p className="text-xs text-slate-400 mt-1 mb-3">Set up access to the analytics suite in under a minute.</p>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">Create your account</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-3">Set up access to the analytics suite in under a minute.</p>
 
               {/* Official Google Sign In Button */}
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                className="w-full py-2.5 px-4 bg-slate-950 hover:bg-slate-800 text-slate-200 font-semibold text-xs rounded-xl border border-slate-800 flex items-center justify-center gap-3 transition-colors shadow-sm mb-3"
+                className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 transition-colors shadow-sm mb-3"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" />
@@ -424,61 +424,61 @@ export function Login() {
               </button>
 
               <div className="relative flex py-1 items-center mb-2">
-                <div className="flex-grow border-t border-slate-800" />
-                <span className="flex-shrink mx-3 text-[10px] text-slate-500 font-bold uppercase tracking-wider">or register with email</span>
-                <div className="flex-grow border-t border-slate-800" />
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
+                <span className="flex-shrink mx-3 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">or register with email</span>
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-slate-300">Full Name</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Full Name</label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
+                <User className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type="text"
                   required
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
                   placeholder="Jordan Ellis"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-slate-300">Email</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Email</label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
+                <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type="email"
                   required
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
                   placeholder="you@company.com"
-                  className={`w-full pl-9 pr-3 py-2.5 bg-slate-950 border rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
-                    regEmailErr ? 'border-rose-500/60' : 'border-slate-800'
+                  className={`w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
+                    regEmailErr ? 'border-rose-500/60' : 'border-slate-200 dark:border-slate-800'
                   }`}
                 />
               </div>
-              {regEmailErr && <p className="text-[11px] text-rose-400">{regEmailErr}</p>}
+              {regEmailErr && <p className="text-[11px] text-rose-500 dark:text-rose-400">{regEmailErr}</p>}
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-slate-300">Password</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Password</label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
+                <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type={showRegPassword ? 'text' : 'password'}
                   required
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                   placeholder="Create a password"
-                  className="w-full pl-9 pr-9 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+                  className="w-full pl-9 pr-9 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowRegPassword(!showRegPassword)}
-                  className="absolute right-3 top-3 text-slate-500 hover:text-cyan-400 transition-colors"
+                  className="absolute right-3 top-3 text-slate-400 dark:text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
                 >
                   {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -486,9 +486,9 @@ export function Login() {
 
               {/* Security Score Meter */}
               {regPassword && (
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 mt-2">
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5 mt-2">
                   <div className="flex items-center justify-between text-[10px] font-bold">
-                    <span className="text-slate-400 tracking-wider">SECURITY SCORE</span>
+                    <span className="text-slate-500 dark:text-slate-400 tracking-wider">SECURITY SCORE</span>
                     <span
                       className="px-2 py-0.5 rounded-full font-extrabold text-[9.5px]"
                       style={{ color: pwColor, backgroundColor: `${pwColor}20` }}
@@ -496,7 +496,7 @@ export function Login() {
                       {pwLabel}
                     </span>
                   </div>
-                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className="h-full transition-all duration-300"
                       style={{ width: `${pwScore}%`, backgroundColor: pwColor }}
@@ -507,28 +507,28 @@ export function Login() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-slate-300">Confirm Password</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Confirm Password</label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
+                <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type={showRegConfirm ? 'text' : 'password'}
                   required
                   value={regConfirm}
                   onChange={(e) => setRegConfirm(e.target.value)}
                   placeholder="Re-enter your password"
-                  className={`w-full pl-9 pr-9 py-2.5 bg-slate-950 border rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
-                    regConfirmErr ? 'border-rose-500/60' : 'border-slate-800'
+                  className={`w-full pl-9 pr-9 py-2.5 bg-slate-50 dark:bg-slate-950 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors ${
+                    regConfirmErr ? 'border-rose-500/60' : 'border-slate-200 dark:border-slate-800'
                   }`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowRegConfirm(!showRegConfirm)}
-                  className="absolute right-3 top-3 text-slate-500 hover:text-cyan-400 transition-colors"
+                  className="absolute right-3 top-3 text-slate-400 dark:text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
                 >
                   {showRegConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {regConfirmErr && <p className="text-[11px] text-rose-400">{regConfirmErr}</p>}
+              {regConfirmErr && <p className="text-[11px] text-rose-500 dark:text-rose-400">{regConfirmErr}</p>}
             </div>
 
             <button
@@ -539,12 +539,12 @@ export function Login() {
               {regLoading ? 'Creating Account...' : 'Create Account'}
             </button>
 
-            <div className="text-center text-xs text-slate-400 pt-3">
+            <div className="text-center text-xs text-slate-600 dark:text-slate-400 pt-3">
               Already have an account?{' '}
               <button
                 type="button"
                 onClick={() => setActiveTab('login')}
-                className="text-cyan-400 font-bold hover:underline"
+                className="text-cyan-600 dark:text-cyan-400 font-bold hover:underline"
               >
                 Sign in
               </button>
@@ -554,9 +554,9 @@ export function Login() {
 
         {/* Footer Legal Links */}
         <div className="mt-8 text-center text-[11px] text-slate-500 space-x-2">
-          <a href="#" className="hover:text-slate-300 underline">Privacy Policy</a>
+          <a href="#" className="hover:text-slate-700 dark:hover:text-slate-300 underline">Privacy Policy</a>
           <span>•</span>
-          <a href="#" className="hover:text-slate-300 underline">Terms of Service</a>
+          <a href="#" className="hover:text-slate-700 dark:hover:text-slate-300 underline">Terms of Service</a>
         </div>
       </div>
     </div>

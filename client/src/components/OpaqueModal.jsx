@@ -6,9 +6,9 @@ export function OpaqueModal({ isOpen, onClose, title, children }) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-      {/* Solid Backdrop - Blocks content completely */}
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950 opacity-90 transition-opacity"
+        className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 

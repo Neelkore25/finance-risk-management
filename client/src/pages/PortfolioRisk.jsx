@@ -80,10 +80,10 @@ export function PortfolioRisk() {
       </div>
 
       {/* Synthetic Data Label Banner */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs flex items-center gap-3 opacity-100">
-        <Info className="w-5 h-5 text-sky-400 shrink-0" />
+      <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs flex items-center gap-3">
+        <Info className="w-5 h-5 text-sky-500 dark:text-sky-400 shrink-0" />
         <div>
-          <span className="font-extrabold text-white block">Synthetic Market Return Model</span>
+          <span className="font-extrabold text-slate-900 dark:text-white block">Synthetic Market Return Model</span>
           <span>
             Quantitative metrics are derived using synthetic asset return covariance vectors locally calculated over 252 trading days. Clearly labeled for demonstration & educational analysis.
           </span>

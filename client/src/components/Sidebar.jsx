@@ -50,27 +50,27 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
       {/* Mobile Backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-[#080F1A]/80 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-slate-900/60 dark:bg-[#080F1A]/80 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* DARK FINTECH SIDEBAR */}
+      {/* FINTECH SIDEBAR (LIGHT & DARK SUPPORT) */}
       <aside
-        className={`fixed top-0 left-0 bottom-0 w-64 bg-[#0D1724] border-r border-white/10 z-50 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 bottom-0 w-64 bg-white dark:bg-[#0D1724] border-r border-slate-200 dark:border-white/10 z-50 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        } flex flex-col font-sans shadow-2xl`}
+        } flex flex-col font-sans shadow-xl dark:shadow-2xl`}
       >
         {/* Brand Header */}
-        <div className="h-16 flex items-center px-6 border-b border-white/10 bg-[#080F1A]">
+        <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#080F1A]">
           <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center mr-3 shadow-lg shadow-blue-500/20 shrink-0">
             <Shield className="w-5 h-5 text-white stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="font-extrabold text-xs text-white tracking-widest leading-tight font-display uppercase">
-              FINANCE <span className="text-blue-500">RISK</span>
+            <h1 className="font-extrabold text-xs text-slate-900 dark:text-white tracking-widest leading-tight font-display uppercase">
+              FINANCE <span className="text-blue-600 dark:text-blue-500">RISK</span>
             </h1>
-            <p className="text-[9px] text-slate-400 font-semibold tracking-wider uppercase mt-0.5">
+            <p className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold tracking-wider uppercase mt-0.5">
               Analytics Platform
             </p>
           </div>
@@ -91,7 +91,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
                     `flex items-center px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
                       isActive
                         ? 'bg-blue-600 text-white font-bold shadow-lg shadow-blue-600/30'
-                        : 'text-slate-400 hover:bg-[#162335] hover:text-white'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#162335] hover:text-slate-900 dark:hover:text-white'
                     }`
                   }
                 >
@@ -104,8 +104,8 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
 
           {/* Admin Navigation Group */}
           {isAdmin && (
-            <div className="space-y-1 pt-2 border-t border-white/10">
-              <span className="px-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+            <div className="space-y-1 pt-2 border-t border-slate-200 dark:border-white/10">
+              <span className="px-3.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
                 Administration
               </span>
               {adminNavItems.map((item) => {
@@ -119,7 +119,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
                       `flex items-center px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
                         isActive
                           ? 'bg-purple-600 text-white font-bold shadow-lg shadow-purple-600/30'
-                          : 'text-slate-400 hover:bg-[#162335] hover:text-white'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#162335] hover:text-slate-900 dark:hover:text-white'
                       }`
                     }
                   >
@@ -133,12 +133,12 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
         </nav>
 
         {/* Footer info & Logout */}
-        <div className="p-4 border-t border-white/10 bg-[#080F1A] space-y-3">
+        <div className="p-4 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#080F1A] space-y-3">
           <button
             onClick={() => signOut()}
-            className="w-full flex items-center px-3.5 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-rose-950/40 hover:text-rose-400 transition-colors"
+            className="w-full flex items-center px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
           >
-            <LogOut className="w-4 h-4 mr-3 shrink-0 text-slate-400" />
+            <LogOut className="w-4 h-4 mr-3 shrink-0 text-current" />
             <span>Logout</span>
           </button>
         </div>
