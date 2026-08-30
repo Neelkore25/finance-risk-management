@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../services/apiClient';
 import { ShieldAlert, Info, Calculator, CheckCircle2, AlertCircle } from 'lucide-react';
+import { RiskBadge } from '../components/RiskBadge';
 
 export function CreditRisk() {
   const [creditRisk, setCreditRisk] = useState(null);
@@ -184,26 +185,25 @@ export function CreditRisk() {
         </div>
 
         {/* Credit Risk Scorecard Output */}
-        <div className="opaque-card space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="opaque-card space-y-4 p-6">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white pb-3 border-b border-slate-200 dark:border-slate-800">
             Model Evaluation Output
           </h2>
 
-          <div className="text-center py-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 opacity-100">
-            <span className="text-5xl font-extrabold text-slate-900 dark:text-white block">
+          <div className="text-center py-6 bg-[#EDF2F7] dark:bg-[#0B0F17] rounded-2xl border border-[#CBD5E1] dark:border-slate-800 opacity-100 space-y-2">
+            <span className="text-6xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums block">
               {creditRisk?.creditScore}
             </span>
-            <span className="text-xs font-semibold text-slate-400 block mt-1">Scale 300 - 850</span>
+            <span className="text-xs font-bold text-[#475569] dark:text-slate-400 block">Scale 300 - 850</span>
 
-            <div className="mt-3">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                Tier: {creditRisk?.tier} ({creditRisk?.riskLevel})
-              </span>
+            <div className="pt-2 flex justify-center">
+              <RiskBadge level={creditRisk?.tier || creditRisk?.riskLevel || 'Good'} />
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 px-4">
-              <span className="text-xs font-bold text-slate-500 block">Probability of Default</span>
-              <span className="text-lg font-extrabold text-rose-500">{creditRisk?.probDefault}%</span>
+              <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Probability of Default</span>
+              <span className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 font-mono tabular-nums">{creditRisk?.probDefault}%</span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">💡 Statistical default probability estimate</span>
             </div>
           </div>
 

@@ -99,14 +99,11 @@ export function Sidebar({ mobileOpen, setMobileOpen }) {
 
         {/* Footer info */}
         <div className="p-4 border-t border-[#CBD5E1] dark:border-[#1F2937] bg-[#EDF2F7] dark:bg-[#0B0F17]">
-          <p className="text-[10px] text-[#475569] dark:text-[#9CA3AF] font-medium">
-            Educational Risk Analysis Model
-          </p>
           <a
             href="https://neelkore25.github.io/finance-risk-management/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] font-bold text-[#2563EB] dark:text-[#0EA5E9] hover:underline block mt-1"
+            className="text-[10px] font-bold text-[#2563EB] dark:text-[#0EA5E9] hover:underline block"
           >
             Live Site: neelkore25.github.io
           </a>

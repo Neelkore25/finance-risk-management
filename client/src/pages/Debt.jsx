@@ -126,18 +126,23 @@ export function Debt() {
       </div>
 
       {/* Metrics & High Burden Alerts */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Total Outstanding Debt</span>
-          <span className="text-xl font-extrabold text-slate-900 dark:text-white">${totalOutstanding.toLocaleString()}</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="opaque-card p-6 space-y-1">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Total Outstanding Debt</span>
+          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">₹{totalOutstanding.toLocaleString('en-IN')}</span>
+          <span className="text-[11px] text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800">Total liability balance</span>
         </div>
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Total Monthly Payment</span>
-          <span className="text-xl font-extrabold text-rose-600 dark:text-rose-400">${totalMonthlyPayment.toLocaleString()} / mo</span>
+        <div className="opaque-card p-6 space-y-1">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Total Monthly EMI Payment</span>
+          <span className="text-3xl font-extrabold text-rose-600 dark:text-rose-400 font-mono tabular-nums">₹{totalMonthlyPayment.toLocaleString('en-IN')}<span className="text-xs font-normal text-slate-400">/mo</span></span>
+          <span className="text-[11px] text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800">Total monthly debt service</span>
         </div>
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Debt-to-Income (DTI) Ratio</span>
-          <span className="text-xl font-extrabold text-slate-900 dark:text-white">{dti.toFixed(1)}%</span>
+        <div className="opaque-card p-6 space-y-1 border-l-4 border-l-[#2563EB] dark:border-l-[#0EA5E9]">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Debt-to-Income (DTI)</span>
+          <span className="text-5xl sm:text-6xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{dti.toFixed(1)}%</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
+            💡 <strong>Percentage of income going to debt payments</strong> (Target: &le;36%).
+          </span>
         </div>
       </div>
 

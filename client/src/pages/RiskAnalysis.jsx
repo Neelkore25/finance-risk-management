@@ -28,26 +28,26 @@ export function RiskAnalysis() {
   const { overallScore, overallLevel, overallSummary, categories } = assessment || {};
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <Activity className="w-6 h-6 text-sky-500" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+            <Activity className="w-7 h-7 text-[#2563EB] dark:text-[#0EA5E9]" />
             Explainable Risk Score Decomposition
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-[#475569] dark:text-[#9CA3AF] mt-1 font-medium">
             Transparent mathematical evaluation breakdown answering: "Why is my overall risk score {overallScore}?"
           </p>
         </div>
       </div>
 
       {/* Overview Score Explanation Header */}
-      <div className="opaque-card bg-slate-900 text-white border-slate-800 space-y-3">
+      <div className="opaque-card bg-[#F8FAFC] dark:bg-[#111827] text-[#0F172A] dark:text-white border border-[#CBD5E1] dark:border-[#1F2937] space-y-3 p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Aggregate Composite Risk Score</span>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-3xl font-extrabold">{overallScore} / 100</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#475569] dark:text-[#9CA3AF]">Aggregate Composite Risk Score</span>
+            <div className="flex items-center gap-4 mt-1">
+              <span className="text-5xl sm:text-6xl font-extrabold font-mono tabular-nums">{overallScore}<span className="text-2xl text-slate-400 font-sans">/100</span></span>
               <RiskBadge level={overallLevel} />
             </div>
           </div>
@@ -56,7 +56,7 @@ export function RiskAnalysis() {
             <span className="text-[11px] text-sky-400">Debt (25%) + Liquidity (20%) + Emergency (20%) + Cash Flow (20%) + Concentration (10%) + Goals (5%)</span>
           </div>
         </div>
-        <p className="text-xs text-slate-300 border-t border-slate-800 pt-3">
+        <p className="text-xs text-slate-500 dark:text-slate-300 border-t border-slate-200 dark:border-slate-800 pt-3">
           {overallSummary}
         </p>
       </div>

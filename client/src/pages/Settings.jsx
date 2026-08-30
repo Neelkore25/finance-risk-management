@@ -95,11 +95,11 @@ export function Settings() {
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 font-display">
-            <SettingsIcon className="w-6 h-6 text-sky-500" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+            <SettingsIcon className="w-7 h-7 text-[#2563EB] dark:text-[#0EA5E9]" />
             Platform & Risk Model Settings
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-[#475569] dark:text-[#9CA3AF] mt-1 font-medium">
             Configure quantitative risk parameters, benchmark thresholds, regional formatting, and database sync.
           </p>
         </div>
@@ -389,17 +389,6 @@ export function Settings() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* LEGAL & EDUCATIONAL DISCLAIMER CARD */}
-      <div className="opaque-card space-y-3 border-l-4 border-l-sky-500 mt-6">
-        <div className="flex items-center gap-2 text-sky-500 font-bold text-xs uppercase tracking-wider">
-          <ShieldCheck className="w-4 h-4" />
-          Educational Model & Legal Disclaimer
-        </div>
-        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-          "Finance Risk Analytics is an educational financial risk-analysis tool and does not provide professional financial advice. All quantitative VaR, Monte Carlo, and credit risk models are computed deterministically using standard mathematical formulations."
-        </p>
       </div>
     </div>
   );

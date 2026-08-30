@@ -125,14 +125,14 @@ export function Reports() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-6 h-6 text-sky-500" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+            <FileText className="w-7 h-7 text-[#2563EB] dark:text-[#0EA5E9]" />
             Executive Reports & Data Exports
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-[#475569] dark:text-[#9CA3AF] mt-1 font-medium">
             Download comprehensive PDF risk audit reports or raw CSV financial metric exports in Indian Rupees (₹).
           </p>
         </div>
@@ -140,24 +140,24 @@ export function Reports() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* PDF Download Card */}
-        <div className="opaque-card space-y-4">
+        <div className="opaque-card space-y-4 p-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+            <div className="p-3.5 rounded-xl bg-blue-100 text-[#2563EB] dark:bg-sky-950 dark:text-[#0EA5E9]">
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Executive PDF Risk Summary</h2>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Executive PDF Risk Summary</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">Formatted PDF document in ₹</p>
             </div>
           </div>
 
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p className="text-xs text-[#475569] dark:text-slate-300 leading-relaxed font-medium">
             Generates an executive PDF report containing your financial scorecards, category decomposition, portfolio VaR, and credit metrics.
           </p>
 
           <button
             onClick={handleDownloadPDF}
-            className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 bg-[#2563EB] dark:bg-[#0EA5E9] hover:bg-blue-700 dark:hover:bg-sky-400 text-white font-extrabold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
             Download PDF Report
@@ -165,24 +165,24 @@ export function Reports() {
         </div>
 
         {/* CSV Download Card */}
-        <div className="opaque-card space-y-4">
+        <div className="opaque-card space-y-4 p-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+            <div className="p-3.5 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
               <Download className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Raw Financial Metrics CSV</h2>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Raw Financial Metrics CSV</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">Comma-Separated Values format</p>
             </div>
           </div>
 
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p className="text-xs text-[#475569] dark:text-slate-300 leading-relaxed font-medium">
             Exports raw structured CSV data containing your financial metrics, income/expense totals, DTI, cash flow, and emergency reserves for Excel analysis.
           </p>
 
           <button
             onClick={handleDownloadCSV}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
             Download CSV Export

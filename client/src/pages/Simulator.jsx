@@ -193,7 +193,7 @@ export function Simulator() {
             <button
               onClick={runWhatIfSimulation}
               disabled={simulating}
-              className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 bg-[#2563EB] dark:bg-[#0EA5E9] hover:bg-blue-700 dark:hover:bg-sky-400 text-white font-extrabold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4" />
               {simulating ? 'Computing What-If...' : 'Run What-If Simulation'}
@@ -202,28 +202,29 @@ export function Simulator() {
 
           {/* Results Comparison Output */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="opaque-card grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center opacity-100">
-                <span className="text-xs font-bold text-slate-500 uppercase block">Baseline Score</span>
-                <span className="text-3xl font-extrabold text-slate-900 dark:text-white block mt-1">
-                  {simResult?.baselineScore} / 100
+            <div className="opaque-card grid grid-cols-1 sm:grid-cols-2 gap-6 items-center p-6">
+              <div className="p-5 rounded-2xl bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 text-center opacity-100 space-y-2">
+                <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] uppercase block tracking-wider">Baseline Score</span>
+                <span className="text-5xl sm:text-6xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums block">
+                  {simResult?.baselineScore}<span className="text-2xl text-slate-400 font-sans">/100</span>
                 </span>
-                <div className="mt-2">
+                <div className="pt-2 flex justify-center">
                   <RiskBadge level={simResult?.baselineLevel} score={simResult?.baselineScore} />
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-sky-950 border border-sky-800 text-center opacity-100">
-                <span className="text-xs font-bold text-sky-400 uppercase block">Simulated Score</span>
-                <span className="text-3xl font-extrabold text-white block mt-1">
-                  {simResult?.simulatedScore} / 100
+              <div className="p-5 rounded-2xl bg-blue-950/40 dark:bg-sky-950/40 border border-[#2563EB] dark:border-[#0EA5E9] text-center opacity-100 space-y-2">
+                <span className="text-xs font-bold text-[#2563EB] dark:text-[#0EA5E9] uppercase block tracking-wider">Simulated Score</span>
+                <span className="text-5xl sm:text-6xl font-extrabold text-white font-mono tabular-nums block">
+                  {simResult?.simulatedScore}<span className="text-2xl text-slate-400 font-sans">/100</span>
                 </span>
-                <div className="mt-2 flex items-center justify-center gap-2">
+                <div className="pt-2 flex items-center justify-center gap-2">
                   <RiskBadge level={simResult?.simulatedLevel} score={simResult?.simulatedScore} />
-                  <span className={`text-xs font-bold ${simResult?.scoreDelta <= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${simResult?.scoreDelta <= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
                     ({simResult?.scoreDelta <= 0 ? `${simResult?.scoreDelta} pts` : `+${simResult?.scoreDelta} pts`})
                   </span>
                 </div>
+                <span className="text-[10px] text-slate-400 block pt-1">💡 Delta indicates risk score shift</span>
               </div>
             </div>
 

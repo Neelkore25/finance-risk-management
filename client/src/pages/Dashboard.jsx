@@ -166,43 +166,45 @@ export function Dashboard() {
       )}
 
       {/* 1. EXECUTIVE SUMMARY TOP CARD */}
-      <div className="opaque-card bg-[#F8FAFC] dark:bg-[#111827] border border-[#CBD5E1] dark:border-[#1F2937] text-[#0F172A] dark:text-[#F3F4F6] relative overflow-hidden">
+      <div className="opaque-card bg-[#F8FAFC] dark:bg-[#111827] border border-[#CBD5E1] dark:border-[#1F2937] text-[#0F172A] dark:text-[#F3F4F6] relative overflow-hidden p-6 sm:p-8">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
+          <div className="space-y-3 max-w-2xl">
             <div className="flex items-center gap-3">
-              <ShieldAlert className="w-8 h-8 text-[#2563EB] dark:text-[#0EA5E9] stroke-[2.5]" />
+              <ShieldAlert className="w-10 h-10 text-[#2563EB] dark:text-[#0EA5E9] stroke-[2.5] shrink-0" />
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-[#475569] dark:text-[#9CA3AF]">
                   Overall Financial Risk Score
                 </span>
-                <h1 className="text-3xl font-extrabold flex items-center gap-3 text-[#0F172A] dark:text-[#F3F4F6] font-display">
-                  <span>{overallScore} / 100</span>
+                <h1 className="text-5xl sm:text-6xl font-extrabold flex items-center gap-4 text-[#0F172A] dark:text-[#F3F4F6] font-mono tabular-nums">
+                  <span>{overallScore}<span className="text-2xl text-slate-400 font-sans">/100</span></span>
                   <RiskBadge level={overallLevel} />
                 </h1>
               </div>
             </div>
-            <p className="text-xs text-[#475569] dark:text-slate-300 leading-relaxed font-medium">
+            <p className="text-xs sm:text-sm text-[#475569] dark:text-slate-300 leading-relaxed font-medium">
               {overallSummary}
             </p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              Last Evaluated: {new Date().toLocaleDateString()} • Powered by Finance Risk Analytics Engine
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-200 dark:border-slate-800">
+              💡 <strong>Micro-copy:</strong> Lower score indicates lower financial distress risk. Last Evaluated: {new Date().toLocaleDateString()}
             </p>
           </div>
 
-          <div className="flex flex-wrap lg:flex-col gap-3 w-full lg:w-auto">
-            <div className="bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 rounded-xl p-4 min-w-[160px]">
-              <span className="text-[11px] text-[#475569] dark:text-[#9CA3AF] font-semibold block">Monthly Cash Flow</span>
-              <span className={`text-lg font-bold flex items-center gap-1 ${metrics?.netCashFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                {metrics?.netCashFlow >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+          <div className="flex flex-wrap lg:flex-col gap-4 w-full lg:w-auto">
+            <div className="bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 rounded-xl p-4 min-w-[180px]">
+              <span className="text-[11px] text-[#475569] dark:text-[#9CA3AF] font-bold block uppercase tracking-wider">Monthly Cash Flow</span>
+              <span className={`text-2xl font-extrabold flex items-center gap-1 font-mono tabular-nums ${metrics?.netCashFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {metrics?.netCashFlow >= 0 ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
                 ₹{Math.abs(metrics?.netCashFlow || 0).toLocaleString('en-IN')}
               </span>
+              <span className="text-[10px] text-slate-400 block mt-1">Surplus monthly income</span>
             </div>
 
-            <div className="bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 rounded-xl p-4 min-w-[160px]">
-              <span className="text-[11px] text-[#475569] dark:text-[#9CA3AF] font-semibold block">Emergency Reserve</span>
-              <span className="text-lg font-bold text-[#2563EB] dark:text-[#0EA5E9]">
+            <div className="bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 rounded-xl p-4 min-w-[180px]">
+              <span className="text-[11px] text-[#475569] dark:text-[#9CA3AF] font-bold block uppercase tracking-wider">Emergency Reserve</span>
+              <span className="text-2xl font-extrabold text-[#2563EB] dark:text-[#0EA5E9] font-mono tabular-nums">
                 {metrics?.emergencyCoverageMonths || 0} Months
               </span>
+              <span className="text-[10px] text-slate-400 block mt-1">Liquid reserve coverage</span>
             </div>
           </div>
         </div>
@@ -238,36 +240,36 @@ export function Dashboard() {
       )}
 
       {/* 3. KEY METRICS GRID */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">Monthly Income</span>
-          <span className="text-xl font-extrabold text-slate-900 dark:text-white">${metrics?.monthlyIncome?.toLocaleString()}</span>
-          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 block mt-1 font-semibold">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="opaque-card p-6 space-y-1">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Monthly Net Income</span>
+          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">₹{metrics?.monthlyIncome?.toLocaleString('en-IN')}</span>
+          <span className="text-xs text-emerald-600 dark:text-emerald-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-bold">
             Savings Rate: {metrics?.savingsRate}%
           </span>
         </div>
 
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">Total Monthly Expenses</span>
-          <span className="text-xl font-extrabold text-slate-900 dark:text-white">${metrics?.totalMonthlyExpenses?.toLocaleString()}</span>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">
-            Essential: ${metrics?.essentialExp?.toLocaleString()}
+        <div className="opaque-card p-6 space-y-1">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Total Monthly Expenses</span>
+          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">₹{metrics?.totalMonthlyExpenses?.toLocaleString('en-IN')}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
+            Essential: ₹{metrics?.essentialExp?.toLocaleString('en-IN')}
           </span>
         </div>
 
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">Debt-to-Income (DTI)</span>
-          <span className="text-xl font-extrabold text-slate-900 dark:text-white">{metrics?.dtiRatio}%</span>
-          <span className={`text-[11px] font-semibold block mt-1 ${metrics?.dtiRatio > 36 ? 'text-rose-500' : 'text-emerald-500'}`}>
-            {metrics?.dtiRatio > 36 ? 'High Debt Burden' : 'Healthy DTI Ratio'}
+        <div className="opaque-card p-6 space-y-1">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Debt-to-Income (DTI)</span>
+          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{metrics?.dtiRatio}%</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
+            💡 <strong>Percentage of income going to debt payments</strong> (Target: &le;36%).
           </span>
         </div>
 
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">Liquid Savings Buffer</span>
-          <span className="text-xl font-extrabold text-slate-900 dark:text-white">{metrics?.liquidCoverageMonths} Mos</span>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">
-            Total Savings: ${metrics?.existingSavings?.toLocaleString()}
+        <div className="opaque-card p-6 space-y-1">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Liquid Savings Buffer</span>
+          <span className="text-3xl font-extrabold text-[#2563EB] dark:text-[#0EA5E9] font-mono tabular-nums">{metrics?.liquidCoverageMonths} Mos</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
+            Savings: ₹{metrics?.existingSavings?.toLocaleString('en-IN')}
           </span>
         </div>
       </div>
