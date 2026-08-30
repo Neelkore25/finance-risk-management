@@ -174,15 +174,15 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex items-center justify-center p-4 sm:p-6 relative overflow-x-hidden font-sans">
+    <div className="min-h-screen w-full bg-[#080F1A] text-[#F8FAFC] flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-x-hidden font-sans">
       {/* Toast Notification */}
       <div
-        className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl font-semibold text-xs shadow-2xl flex items-center gap-2.5 border transition-all duration-400 ${
+        className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl font-semibold text-xs shadow-2xl flex items-center gap-2.5 border transition-all duration-300 ${
           toast.show ? 'translate-y-0 opacity-100' : '-translate-y-16 opacity-0'
         } ${
           toast.type === 'ok'
-            ? 'bg-slate-900 border-emerald-500/40 text-emerald-300'
-            : 'bg-slate-900 border-rose-500/40 text-rose-300'
+            ? 'bg-[#111D2B] border-emerald-500/40 text-emerald-300'
+            : 'bg-[#111D2B] border-rose-500/40 text-rose-300'
         }`}
       >
         <span className="shrink-0 p-1 rounded-full bg-current/10">
@@ -198,28 +198,67 @@ export function Login() {
       {/* Theme Toggle Button */}
       <button
         onClick={toggleTheme}
-        className="absolute top-6 right-6 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-cyan-400 transition-colors"
+        className="absolute top-6 right-6 p-2.5 rounded-xl bg-[#0D1724] border border-white/10 text-slate-400 hover:text-white transition-colors"
         title="Toggle theme"
       >
-        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-300" />}
       </button>
 
-      {/* CENTERED LOGIN CARD */}
-      <div className="w-full max-w-[420px] bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-md opacity-100 my-auto">
-        {/* Header Logo */}
-        <div className="flex items-center justify-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-sky-500/30 shrink-0">
-            <Shield className="w-5 h-5 text-white stroke-[2.5]" />
-          </div>
-          <div>
-            <div className="text-base font-extrabold text-white tracking-wide font-display">
-              FINANCE <span className="text-cyan-400">RISK</span> ANALYTICS
+      {/* DUAL COLUMN CONTAINER */}
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        {/* LEFT COLUMN: BRANDING & FINTECH VALUE PROPOSITION */}
+        <div className="lg:col-span-6 space-y-6 hidden lg:block pr-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
+              <Shield className="w-6 h-6 text-white stroke-[2.5]" />
             </div>
-            <div className="text-[9.5px] tracking-[2px] text-slate-400 font-bold uppercase mt-0.5">
-              QUANTITATIVE ANALYTICS SUITE
+            <div>
+              <h1 className="text-xl font-extrabold text-white tracking-wider font-display uppercase">
+                FINANCE <span className="text-blue-500">RISK</span> ANALYTICS
+              </h1>
+              <p className="text-xs text-slate-400 font-semibold tracking-wider uppercase mt-0.5">
+                Credit Risk Prediction & Analytics Platform
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-2">
+            <h2 className="text-3xl font-extrabold text-white font-display leading-tight">
+              Enterprise Risk Intelligence & Quantitative Financial Analytics
+            </h2>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Real-time loan portfolio default predictions, statistical Value at Risk (VaR), stress simulation, and credit risk analytics built for financial institutions.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
+            <div className="p-3 rounded-xl bg-[#111D2B] border border-white/10">
+              <span className="text-xs font-bold text-blue-400 block">Quantitative Engine</span>
+              <span className="text-[11px] text-slate-400">Logistic ML & SciPy VaR Models</span>
+            </div>
+            <div className="p-3 rounded-xl bg-[#111D2B] border border-white/10">
+              <span className="text-xs font-bold text-emerald-400 block">Bank-Grade Security</span>
+              <span className="text-[11px] text-slate-400">Supabase RLS & PostgreSQL</span>
             </div>
           </div>
         </div>
+
+        {/* RIGHT COLUMN: CENTERED LOGIN CARD */}
+        <div className="lg:col-span-6 w-full max-w-[440px] mx-auto bg-[#111D2B] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl">
+          {/* Header Logo (Mobile View) */}
+          <div className="flex items-center justify-center gap-3 mb-6 lg:hidden">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
+              <Shield className="w-5 h-5 text-white stroke-[2.5]" />
+            </div>
+            <div>
+              <div className="text-base font-extrabold text-white tracking-wide font-display uppercase">
+                FINANCE <span className="text-blue-500">RISK</span> ANALYTICS
+              </div>
+              <div className="text-[9.5px] tracking-[2px] text-slate-400 font-bold uppercase mt-0.5">
+                Credit Risk Analytics Platform
+              </div>
+            </div>
+          </div>
 
         {/* Tab Switcher */}
         <div className="relative flex p-1 bg-slate-950 border border-slate-800 rounded-xl mb-6">
@@ -515,11 +554,12 @@ export function Login() {
 
         {/* Footer Legal Links */}
         <div className="mt-8 text-center text-[11px] text-slate-500 space-x-2">
-          <a href="#" className="hover:text-slate-300 underline">Privacy</a>
+          <a href="#" className="hover:text-slate-300 underline">Privacy Policy</a>
           <span>•</span>
-          <a href="#" className="hover:text-slate-300 underline">Terms</a>
+          <a href="#" className="hover:text-slate-300 underline">Terms of Service</a>
         </div>
       </div>
     </div>
+  </div>
   );
 }

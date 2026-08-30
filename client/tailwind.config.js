@@ -7,14 +7,26 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        display: ['Poppins', 'sans-serif'],
+      },
       colors: {
-        brand: {
-          50: '#f0f7ff',
-          100: '#e0effe',
-          500: '#0284c7',
-          600: '#0265d6',
-          700: '#034ea2',
-          900: '#0c2a52'
+        fintech: {
+          bg: '#080F1A',
+          bgSecondary: '#0D1724',
+          card: '#111D2B',
+          elevated: '#162335',
+          border: 'rgba(255, 255, 255, 0.08)',
+          blue: '#2563EB',
+          purple: '#7C3AED',
+          cyan: '#06B6D4',
+          low: '#10B981',
+          medium: '#F59E0B',
+          high: '#EF4444',
+          textPrimary: '#F8FAFC',
+          textSecondary: '#94A3B8',
+          textMuted: '#64748B'
         }
       }
     },

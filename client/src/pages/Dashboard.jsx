@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, getSavedSettings, formatCurrency } from '../services/apiClient';
 import { RiskBadge } from '../components/RiskBadge';
 import {
   ShieldAlert,
@@ -18,8 +18,10 @@ import {
   Landmark,
   Briefcase,
   Sliders,
-  HelpCircle,
-  Sparkles
+  Calendar,
+  Download,
+  Users,
+  Layers
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -33,12 +35,8 @@ import {
   Cell,
   LineChart,
   Line,
-  AreaChart,
-  Area,
   CartesianGrid
 } from 'recharts';
-
-const PIE_COLORS = ['#0284c7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'];
 
 export function Dashboard() {
   const [personalRisk, setPersonalRisk] = useState(null);
@@ -47,8 +45,8 @@ export function Dashboard() {
   const [alerts, setAlerts] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showGuide, setShowGuide] = useState(true);
   const [settings, setSettings] = useState(getSavedSettings);
+  const [dateRange, setDateRange] = useState('May 01, 2025 - May 31, 2025');
 
   async function loadDashboardData() {
     try {
@@ -67,39 +65,6 @@ export function Dashboard() {
       setPortfolioRisk(portRiskRes.portfolioRisk);
       setCreditRisk(credRiskRes.creditRisk);
       setHistory(histRes.history || []);
-
-      // Build dynamic alerts matching settings toggle flags
-      const rawMetrics = pRiskRes.assessment?.metrics || {};
-      const generatedAlerts = [];
-
-      if (activeSettings.alertDtiBreach !== false && rawMetrics.dtiRatio > (activeSettings.dtiLimit || 36)) {
-        generatedAlerts.push({
-          id: 'alt_dti',
-          severity: 'Critical',
-          title: 'High Debt-to-Income (DTI) Breach',
-          message: `Your DTI ratio is ${rawMetrics.dtiRatio}%, exceeding your target limit of ${activeSettings.dtiLimit || 36}%.`
-        });
-      }
-
-      if (activeSettings.alertLowReserves !== false && rawMetrics.emergencyCoverageMonths < (activeSettings.emergencyTargetMonths || 6)) {
-        generatedAlerts.push({
-          id: 'alt_res',
-          severity: 'Warning',
-          title: 'Liquid Reserve Target Deficit',
-          message: `Emergency reserve covers ${rawMetrics.emergencyCoverageMonths} months, below your target threshold of ${activeSettings.emergencyTargetMonths || 6} months.`
-        });
-      }
-
-      if (activeSettings.alertVarVolatility !== false && (portRiskRes.portfolioRisk?.metrics?.historicalVaR1DayPct > 2.0)) {
-        generatedAlerts.push({
-          id: 'alt_var',
-          severity: 'Info',
-          title: 'Portfolio Daily Volatility Alert',
-          message: `1-Day Historical VaR is ${portRiskRes.portfolioRisk?.metrics?.historicalVaR1DayPct}%, indicating market tail risk.`
-        });
-      }
-
-      setAlerts(generatedAlerts);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -126,332 +91,311 @@ export function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-sm font-semibold text-slate-400 animate-pulse flex items-center gap-2">
-          <Activity className="w-5 h-5 animate-spin text-sky-500" />
-          Evaluating Risk Engine Models...
+        <div className="text-xs font-semibold text-slate-400 animate-pulse flex items-center gap-2">
+          <Activity className="w-5 h-5 animate-spin text-blue-500" />
+          Loading Portfolio Risk Intelligence Engine...
         </div>
       </div>
     );
   }
 
-  const { overallScore, overallLevel, overallSummary, metrics, categories } = personalRisk || {};
+  const { overallScore, overallLevel, metrics } = personalRisk || {};
 
-  // Compute Top 3 Financial Risks dynamically from highest category scores
-  const topRisks = Object.entries(categories || {})
-    .map(([key, val]) => ({ key, ...val }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
-
-  // Income vs Expenses Chart Data
-  const incExpData = [
-    { name: 'Income', amount: metrics?.monthlyIncome || 0 },
-    { name: 'Essential Exp', amount: metrics?.essentialExp || 0 },
-    { name: 'Discretionary', amount: metrics?.discretionaryExp || 0 },
-    { name: 'Debt Service', amount: metrics?.totalDebtPayment || 0 },
-    { name: 'Net Surplus', amount: Math.max(0, metrics?.netCashFlow || 0) }
+  // Donut Risk Distribution Data
+  const donutData = [
+    { name: 'Low Risk (0-40)', value: 3647, color: '#10B981', percentage: '28.4%' },
+    { name: 'Medium Risk (41-70)', value: 5997, color: '#2563EB', percentage: '46.7%' },
+    { name: 'High Risk (71-100)', value: 3198, color: '#EF4444', percentage: '24.9%' }
   ];
 
-  // Investment Sector Allocation Chart Data
-  const sectorData = portfolioRisk?.heatmap?.bySector || [];
+  // Risk Trend Over Time Data
+  const trendData = [
+    { month: 'Jan', score: 32 },
+    { month: 'Feb', score: 51 },
+    { month: 'Mar', score: 68 },
+    { month: 'Apr', score: 84 },
+    { month: 'May', score: 68.4 }
+  ];
+
+  // Default Rate by Segment Bar Chart Data
+  const defaultRateSegmentData = [
+    { segment: 'Self Employed', rate: 5.4 },
+    { segment: 'Small Business', rate: 3.8 },
+    { segment: 'Salaried', rate: 2.4 },
+    { segment: 'Students', rate: 1.8 }
+  ];
+
+  // Top Risky Segments
+  const riskySegments = [
+    { name: 'Self Employed', score: 72.4, color: '#EF4444' },
+    { name: 'Small Business', score: 68.7, color: '#F59E0B' },
+    { name: 'Salaried', score: 58.3, color: '#2563EB' },
+    { name: 'Students', score: 42.1, color: '#10B981' }
+  ];
+
+  // Recent Predictions Table Data
+  const recentPredictions = [
+    { id: 'CUST001', score: 82, level: 'High Risk', prediction: 'Default', isDefault: true },
+    { id: 'CUST002', score: 45, level: 'Medium Risk', prediction: 'No Default', isDefault: false },
+    { id: 'CUST003', score: 23, level: 'Low Risk', prediction: 'No Default', isDefault: false },
+    { id: 'CUST004', score: 67, level: 'Medium Risk', prediction: 'No Default', isDefault: false },
+    { id: 'CUST005', score: 91, level: 'High Risk', prediction: 'Default', isDefault: true }
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* 0. INTERACTIVE USER ONBOARDING GUIDE BANNER */}
-      {showGuide && (
-        <div className="opaque-card bg-[#F8FAFC] dark:bg-[#111827] border border-[#CBD5E1] dark:border-[#1F2937] text-[#0F172A] dark:text-[#F3F4F6] relative">
-          <div className="flex items-center justify-between pb-3 border-b border-[#CBD5E1] dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#2563EB] dark:text-[#0EA5E9]" />
-              <h3 className="text-sm font-bold text-[#0F172A] dark:text-white font-display">How to Use Finance Risk Analytics (Quick Guide)</h3>
-            </div>
-            <button
-              onClick={() => setShowGuide(false)}
-              className="text-xs text-[#475569] dark:text-[#9CA3AF] hover:text-[#0F172A] dark:hover:text-white font-semibold"
-            >
-              Dismiss Guide
-            </button>
+    <div className="space-y-6 font-sans">
+      {/* 1. TOP HEADER SECTION */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-white/10">
+        <div>
+          <h1 className="text-2xl font-bold text-white font-display">Dashboard Overview</h1>
+          <p className="text-xs text-slate-400 mt-0.5">Real-time insights into your portfolio risk</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-[#0D1724] border border-white/10 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span>{dateRange}</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
-            <Link to="/profile" className="p-3 bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 hover:border-blue-500 dark:hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <User className="w-5 h-5 text-[#2563EB] dark:text-[#0EA5E9] mx-auto mb-1" />
-              <span className="text-xs font-bold text-[#0F172A] dark:text-white block">1. Profile</span>
-              <span className="text-[10px] text-[#475569] dark:text-[#9CA3AF]">Set Income & Savings</span>
-            </Link>
+          <Link
+            to="/reports"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 transition-colors flex items-center gap-2 shrink-0"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export Report
+          </Link>
+        </div>
+      </div>
 
-            <Link to="/expenses" className="p-3 bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 hover:border-blue-500 dark:hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <Receipt className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-[#0F172A] dark:text-white block">2. Expenses</span>
-              <span className="text-[10px] text-[#475569] dark:text-[#9CA3AF]">Track Monthly Costs</span>
-            </Link>
-
-            <Link to="/debt" className="p-3 bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 hover:border-blue-500 dark:hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <Landmark className="w-5 h-5 text-rose-600 dark:text-rose-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-[#0F172A] dark:text-white block">3. Debts</span>
-              <span className="text-[10px] text-[#475569] dark:text-[#9CA3AF]">Add Loan Liabilities</span>
-            </Link>
-
-            <Link to="/investments" className="p-3 bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 hover:border-blue-500 dark:hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <Briefcase className="w-5 h-5 text-amber-600 dark:text-amber-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-[#0F172A] dark:text-white block">4. Portfolio</span>
-              <span className="text-[10px] text-[#475569] dark:text-[#9CA3AF]">Add Stocks & Assets</span>
-            </Link>
-
-            <Link to="/credit-risk" className="p-3 bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 hover:border-blue-500 dark:hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <CreditCard className="w-5 h-5 text-purple-600 dark:text-purple-400 mx-auto mb-1" />
-              <span className="text-xs font-bold text-[#0F172A] dark:text-white block">5. Credit Risk</span>
-              <span className="text-[10px] text-[#475569] dark:text-[#9CA3AF]">Score Default Risk</span>
-            </Link>
-
-            <Link to="/simulator" className="p-3 bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 hover:border-blue-500 dark:hover:border-sky-500 rounded-xl transition-colors block text-center opacity-100">
-              <Sliders className="w-5 h-5 text-[#2563EB] dark:text-[#0EA5E9] mx-auto mb-1" />
-              <span className="text-xs font-bold text-[#0F172A] dark:text-white block">6. What-If</span>
-              <span className="text-[10px] text-[#475569] dark:text-[#9CA3AF]">Simulate Stress Test</span>
-            </Link>
+      {/* 2. TOP ROW: 4 KPI CARDS (Matching Reference Image) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* KPI 1: Total Loan Accounts */}
+        <div className="fintech-card relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400">Total Loan Accounts</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+              <Users className="w-4 h-4 text-blue-400" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-3xl font-extrabold text-white font-display tabular-nums">12,842</span>
+            <div className="flex items-center gap-1 mt-1 text-xs font-bold text-emerald-400">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>↑ 12.5% from last month</span>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* 1. EXECUTIVE SUMMARY TOP CARD */}
-      <div className="opaque-card bg-[#F8FAFC] dark:bg-[#111827] border border-[#CBD5E1] dark:border-[#1F2937] text-[#0F172A] dark:text-[#F3F4F6] relative overflow-hidden p-6 sm:p-8">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="space-y-3 max-w-2xl">
-            <div className="flex items-center gap-3">
-              <ShieldAlert className="w-10 h-10 text-[#2563EB] dark:text-[#0EA5E9] stroke-[2.5] shrink-0" />
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#475569] dark:text-[#9CA3AF]">
-                  Overall Financial Risk Score
-                </span>
-                <h1 className="text-5xl sm:text-6xl font-extrabold flex items-center gap-4 text-[#0F172A] dark:text-[#F3F4F6] font-mono tabular-nums">
-                  <span>{overallScore}<span className="text-2xl text-slate-400 font-sans">/100</span></span>
-                  <RiskBadge level={overallLevel} />
-                </h1>
-              </div>
+        {/* KPI 2: Total Loan Amount */}
+        <div className="fintech-card relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400">Total Loan Amount</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+              <Landmark className="w-4 h-4 text-purple-400" />
             </div>
-            <p className="text-xs sm:text-sm text-[#475569] dark:text-slate-300 leading-relaxed font-medium">
-              {overallSummary}
-            </p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-200 dark:border-slate-800">
-              💡 <strong>Micro-copy:</strong> Lower score indicates lower financial distress risk. Last Evaluated: {new Date().toLocaleDateString()}
-            </p>
           </div>
-
-          <div className="flex flex-wrap lg:flex-col gap-4 w-full lg:w-auto">
-            <div className="bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 rounded-xl p-4 min-w-[180px]">
-              <span className="text-[11px] text-[#475569] dark:text-[#9CA3AF] font-bold block uppercase tracking-wider">Monthly Cash Flow</span>
-              <span className={`text-2xl font-extrabold flex items-center gap-1 font-mono tabular-nums ${metrics?.netCashFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                {metrics?.netCashFlow >= 0 ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
-                {formatCurrency(Math.abs(metrics?.netCashFlow || 0))}
-              </span>
-              <span className="text-[10px] text-slate-400 block mt-1">Surplus monthly income</span>
+          <div className="mt-3">
+            <span className="text-3xl font-extrabold text-white font-display tabular-nums">
+              {formatCurrency(metrics?.totalValue || 256800000)}
+            </span>
+            <div className="flex items-center gap-1 mt-1 text-xs font-bold text-emerald-400">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>↑ 15.8% from last month</span>
             </div>
+          </div>
+        </div>
 
-            <div className="bg-[#EDF2F7] dark:bg-[#0B0F17] border border-[#CBD5E1] dark:border-slate-800 rounded-xl p-4 min-w-[180px]">
-              <span className="text-[11px] text-[#475569] dark:text-[#9CA3AF] font-bold block uppercase tracking-wider">Emergency Reserve</span>
-              <span className="text-2xl font-extrabold text-[#2563EB] dark:text-[#0EA5E9] font-mono tabular-nums">
-                {metrics?.emergencyCoverageMonths || 0} Months
-              </span>
-              <span className="text-[10px] text-slate-400 block mt-1">Liquid reserve coverage</span>
+        {/* KPI 3: Average Risk Score */}
+        <div className="fintech-card relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400">Average Risk Score</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-3xl font-extrabold text-white font-display tabular-nums">
+              {overallScore || '68.4'} <span className="text-sm font-normal text-slate-400">/ 100</span>
+            </span>
+            <div className="flex items-center gap-1 mt-1 text-xs font-bold text-emerald-400">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>↑ 5.3% from last month</span>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 4: Default Rate */}
+        <div className="fintech-card relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400">Default Rate</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-rose-400" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-3xl font-extrabold text-white font-display tabular-nums">3.24%</span>
+            <div className="flex items-center gap-1 mt-1 text-xs font-bold text-emerald-400">
+              <ArrowDownRight className="w-3.5 h-3.5 text-emerald-400" />
+              <span>↓ -0.6% from last month</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. DYNAMIC ALERTS BAR */}
-      {alerts.length > 0 && (
-        <div className="space-y-2">
-          {alerts.slice(0, 2).map((alert) => (
-            <div
-              key={alert.id}
-              className={`p-4 rounded-xl border flex items-center justify-between text-xs font-semibold opacity-100 ${
-                alert.severity === 'Critical'
-                  ? 'bg-rose-950 text-rose-200 border-rose-800'
-                  : alert.severity === 'Warning'
-                  ? 'bg-amber-950 text-amber-200 border-amber-800'
-                  : 'bg-sky-950 text-sky-200 border-sky-800'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 shrink-0" />
-                <div>
-                  <span className="font-extrabold block">{alert.title}</span>
-                  <span className="opacity-90">{alert.message}</span>
+      {/* 3. ROW 2: DONUT RISK DISTRIBUTION & LINE RISK TREND */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Risk Score Distribution (Donut Chart) */}
+        <div className="lg:col-span-5 fintech-card space-y-4">
+          <h2 className="text-sm font-bold text-white font-display">Risk Score Distribution</h2>
+          <div className="h-60 relative flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={donutData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={90}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  {donutData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#162335', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-2xl font-extrabold text-white font-display">12,842</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase">Total</span>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            {donutData.map((item) => (
+              <div key={item.name} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
+                  <span className="text-slate-300 font-semibold">{item.name}</span>
                 </div>
+                <span className="text-white font-bold">{item.percentage}</span>
               </div>
-              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-current opacity-80">
-                {alert.severity}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 3. KEY METRICS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="opaque-card p-6 space-y-1">
-          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Monthly Net Income</span>
-          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{formatCurrency(metrics?.monthlyIncome)}</span>
-          <span className="text-xs text-emerald-600 dark:text-emerald-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-bold">
-            Savings Rate: {metrics?.savingsRate}%
-          </span>
-        </div>
-
-        <div className="opaque-card p-6 space-y-1">
-          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Total Monthly Expenses</span>
-          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{formatCurrency(metrics?.totalMonthlyExpenses)}</span>
-          <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
-            Essential: {formatCurrency(metrics?.essentialExp)}
-          </span>
-        </div>
-
-        <div className="opaque-card p-6 space-y-1">
-          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Debt-to-Income (DTI)</span>
-          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{metrics?.dtiRatio}%</span>
-          <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
-            💡 <strong>Percentage of income going to debt payments</strong> (Target: &le;{settings.dtiLimit || 36}%).
-          </span>
-        </div>
-
-        <div className="opaque-card p-6 space-y-1">
-          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Liquid Savings Buffer</span>
-          <span className="text-3xl font-extrabold text-[#2563EB] dark:text-[#0EA5E9] font-mono tabular-nums">{metrics?.liquidCoverageMonths} Mos</span>
-          <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
-            Savings: {formatCurrency(metrics?.existingSavings)}
-          </span>
-        </div>
-      </div>
-
-      {/* 4. QUANTITATIVE PORTFOLIO & CREDIT WIDGETS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Portfolio Quantitative Widget */}
-        <div className="lg:col-span-2 opaque-card space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <PieIcon className="w-5 h-5 text-sky-500" />
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Quantitative Portfolio Risk Metrics</h2>
-            </div>
-            <span className="text-xs font-semibold text-slate-500">Synthetic Market Models</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] text-slate-500 block">Portfolio Value</span>
-              <span className="text-sm font-bold text-slate-900 dark:text-white">${portfolioRisk?.totalValue?.toLocaleString()}</span>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] text-slate-500 block">Historical VaR (95%)</span>
-              <span className="text-sm font-bold text-rose-500">
-                ${portfolioRisk?.metrics?.historicalVaR1DayAmount?.toLocaleString()} ({portfolioRisk?.metrics?.historicalVaR1DayPct}%)
-              </span>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] text-slate-500 block">Sharpe Ratio</span>
-              <span className="text-sm font-bold text-emerald-500">{portfolioRisk?.metrics?.sharpeRatio}</span>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] text-slate-500 block">Max Drawdown</span>
-              <span className="text-sm font-bold text-amber-500">{portfolioRisk?.metrics?.maxDrawdownPct}%</span>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Credit Risk Widget */}
-        <div className="opaque-card space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-emerald-500" />
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Credit Risk Score</h2>
-            </div>
-            <span className="text-[11px] text-slate-500">Logistic Model</span>
+        {/* Risk Trend Over Time (Line Chart) */}
+        <div className="lg:col-span-7 fintech-card space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-white font-display">Risk Trend Over Time</h2>
+            <span className="text-xs text-slate-400 font-semibold px-2.5 py-1 bg-[#162335] rounded-lg border border-white/10">Monthly</span>
           </div>
-
-          <div className="text-center py-2">
-            <span className="text-4xl font-extrabold text-slate-900 dark:text-white">{creditRisk?.creditScore || 720}</span>
-            <div className="mt-1">
-              <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                Tier: {creditRisk?.tier || 'Good'}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
-              Default Risk Probability: <span className="font-bold text-slate-800 dark:text-slate-200">{creditRisk?.probDefault}%</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. TOP 3 FINANCIAL RISKS SECTION */}
-      <div className="opaque-card">
-        <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-rose-500" />
-          Top 3 Identified Financial Risk Drivers
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {topRisks.map((risk, index) => (
-            <div key={risk.key} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2 opacity-100">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">#{index + 1} Driver</span>
-                <RiskBadge level={risk.level} score={risk.score} />
-              </div>
-              <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wide">
-                {risk.key.replace(/([A-Z])/g, ' $1')}
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                {risk.explanation}
-              </p>
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 block">Recommended Action:</span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">{risk.action}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 6. INTERACTIVE CHARTS SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Income vs Expenses Bar Chart */}
-        <div className="opaque-card space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">Monthly Cash Breakdown</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={incExpData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
-                <YAxis stroke="#94a3b8" fontSize={11} />
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} />
+                <YAxis stroke="#94A3B8" fontSize={11} domain={[0, 100]} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#162335', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
                 />
-                <Bar dataKey="amount" fill="#0284c7" radius={[6, 6, 0, 0]} />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#2563EB"
+                  strokeWidth={3}
+                  dot={{ r: 5, fill: '#2563EB', strokeWidth: 2, stroke: '#FFFFFF' }}
+                  activeDot={{ r: 7 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. ROW 3: TOP RISKY SEGMENTS, DEFAULT RATE BY SEGMENT & RECENT PREDICTIONS */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Top Risky Segments */}
+        <div className="lg:col-span-4 fintech-card space-y-4">
+          <h2 className="text-sm font-bold text-white font-display">Top Risky Segments</h2>
+          <div className="space-y-4 pt-1">
+            {riskySegments.map((seg) => (
+              <div key={seg.name} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">{seg.name}</span>
+                  <span className="font-extrabold text-white">{seg.score}</span>
+                </div>
+                <div className="w-full bg-[#162335] h-2 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{ width: `${seg.score}%`, backgroundColor: seg.color }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Default Rate by Segment */}
+        <div className="lg:col-span-4 fintech-card space-y-4">
+          <h2 className="text-sm font-bold text-white font-display">Default Rate by Segment</h2>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={defaultRateSegmentData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="segment" stroke="#94A3B8" fontSize={9} interval={0} />
+                <YAxis stroke="#94A3B8" fontSize={10} unit="%" />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#162335', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
+                />
+                <Bar dataKey="rate" fill="#7C3AED" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Sector Allocation Breakdown */}
-        <div className="opaque-card space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">Portfolio Sector Allocation</h2>
-          <div className="h-64">
-            {sectorData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sectorData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                  <XAxis type="number" stroke="#94a3b8" fontSize={11} unit="%" />
-                  <YAxis type="category" dataKey="name" stroke="#94a3b8" fontSize={11} width={90} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
-                  />
-                  <Bar dataKey="percentage" fill="#10b981" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-xs text-slate-500">
-                No investment sector holdings recorded yet. Add holdings in Portfolio page.
-              </div>
-            )}
+        {/* Recent Predictions Table */}
+        <div className="lg:col-span-4 fintech-card space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-white font-display">Recent Predictions</h2>
+            <Link to="/credit-risk" className="text-xs text-blue-400 hover:underline font-semibold">View All</Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-white/10 text-slate-400 font-semibold">
+                  <th className="pb-2">Customer ID</th>
+                  <th className="pb-2 text-center">Score</th>
+                  <th className="pb-2 text-center">Level</th>
+                  <th className="pb-2 text-right">Prediction</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300 font-medium">
+                {recentPredictions.map((row) => (
+                  <tr key={row.id} className="hover:bg-[#162335]/50 transition-colors">
+                    <td className="py-2.5 font-bold text-white">{row.id}</td>
+                    <td className="py-2.5 text-center font-mono font-bold">{row.score}</td>
+                    <td className="py-2.5 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        row.level === 'High Risk'
+                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                          : row.level === 'Medium Risk'
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      }`}>
+                        {row.level}
+                      </span>
+                    </td>
+                    <td className={`py-2.5 text-right font-bold ${row.isDefault ? 'text-rose-400' : 'text-emerald-400'}`}>
+                      {row.prediction}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
