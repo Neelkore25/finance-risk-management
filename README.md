@@ -1,10 +1,12 @@
 # Finance Risk Analytics Platform 🛡️📊
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-sky?style=for-the-badge&logo=github)](https://neelkore25.github.io/finance-risk-management/)
-[![Python Engine](https://img.shields.io/badge/Python-NumPy%20%7C%20Pandas%20%7C%20SciPy%20%7C%20Scikit--Learn-blue.svg?style=for-the-badge&logo=python)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Live Demo](https://img.shields.io/badge/Live%20Web%20App-GitHub%20Pages-sky?style=for-the-badge&logo=github)](https://neelkore25.github.io/finance-risk-management/)
+[![Python API](https://img.shields.io/badge/Live%20Python%20API-Render-emerald?style=for-the-badge&logo=render)](https://finance-risk-management.onrender.com/docs)
+[![Python Engine](https://img.shields.io/badge/Python-NumPy%20%7C%20Pandas%20%7C%20SciPy%20%7C%20Scikit--Learn-blue.svg?style=for-the-badge&logo=python)](https://finance-risk-management.onrender.com/docs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-🌐 **Live Application Link**: [https://neelkore25.github.io/finance-risk-management/](https://neelkore25.github.io/finance-risk-management/)
+🌐 **Live Web Application**: [https://neelkore25.github.io/finance-risk-management/](https://neelkore25.github.io/finance-risk-management/)  
+⚡ **Live Python ML API & Swagger Docs**: [https://finance-risk-management.onrender.com/docs](https://finance-risk-management.onrender.com/docs)
 
 ---
 
