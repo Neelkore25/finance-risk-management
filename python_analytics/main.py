@@ -37,51 +37,14 @@ if GEMINI_KEY:
         except Exception:
             pass
 
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(
     title="Finance Risk Analytics Backend Engine",
     description="Python Data Science, Machine Learning, & Quantitative Finance API",
     version="2.0.0"
 )
-
-@app.get("/", response_class=HTMLResponse)
-def root_landing():
-    return """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Finance Risk Analytics — Python ML Engine</title>
-        <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #080F1A; color: #f8fafc; margin: 0; padding: 40px 20px; display: flex; align-items: center; justify-content: center; min-height: 80vh; }
-            .card { background: #0D1724; border: 1px solid #1e293b; border-radius: 16px; padding: 36px; max-width: 600px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
-            h1 { color: #38bdf8; margin-top: 0; font-size: 24px; }
-            p { color: #94a3b8; font-size: 14px; line-height: 1.6; }
-            .badge { display: inline-block; padding: 4px 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; border-radius: 9999px; font-size: 12px; font-weight: bold; margin-bottom: 20px; }
-            .btn-group { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
-            .btn { display: inline-block; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 13px; transition: all 0.2s; }
-            .btn-primary { background: #0284c7; color: white; }
-            .btn-primary:hover { background: #0369a1; }
-            .btn-secondary { background: #1e293b; color: #cbd5e1; }
-            .btn-secondary:hover { background: #334155; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <span class="badge">● Server Live & Healthy</span>
-            <h1>Finance Risk Analytics API</h1>
-            <p>Python Quantitative Finance, Machine Learning & Risk Intelligence Backend Engine powered by <strong>FastAPI, Pandas, NumPy, Scikit-Learn & SciPy</strong>.</p>
-            <div class="btn-group">
-                <a href="/docs" class="btn btn-primary">⚡ Explore Interactive Swagger API Docs (/docs)</a>
-                <a href="https://neelkore25.github.io/finance-risk-management/" target="_blank" class="btn btn-secondary">🌐 Open Live Web Application</a>
-                <a href="/health" class="btn btn-secondary">🔍 System Health Status (/health)</a>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
 
 # Configure CORS
 app.add_middleware(
@@ -91,6 +54,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+static_path = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_path):
+    assets_path = os.path.join(static_path, "assets")
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+
+@app.get("/")
+def serve_root_frontend():
+    index_file = os.path.join(static_path, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse("<h1>Finance Risk Analytics API</h1><p>Visit <a href='/docs'>/docs</a> for API documentation.</p>")
 
 class RiskScoreRequest(BaseModel):
     monthly_income: float = 75000
