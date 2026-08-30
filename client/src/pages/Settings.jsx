@@ -4,52 +4,29 @@ import {
   Bell, RefreshCw, RotateCcw, CheckCircle2, AlertCircle, Database
 } from 'lucide-react';
 import { isSupabaseConfigured } from '../services/supabaseClient';
+import { getSavedSettings } from '../services/apiClient';
 
 export function Settings() {
-  // Section A: Risk Model & Benchmark Thresholds
-  const [dtiLimit, setDtiLimit] = useState(36);
-  const [varConfidence, setVarConfidence] = useState(95);
-  const [emergencyTargetMonths, setEmergencyTargetMonths] = useState(6);
-
-  // Section B: Currency & Regional Formatting
-  const [baseCurrency, setBaseCurrency] = useState('INR'); // INR vs USD
-  const [numberFormat, setNumberFormat] = useState('LAKHS'); // LAKHS vs THOUSANDS
-
-  // Section C: Automated Risk Alert Triggers
-  const [alertDtiBreach, setAlertDtiBreach] = useState(true);
-  const [alertLowReserves, setAlertLowReserves] = useState(true);
-  const [alertVarVolatility, setAlertVarVolatility] = useState(true);
-
-  // Status & Feedback Toasts
+  const [settings, setSettings] = useState(getSavedSettings);
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('ok');
 
   useEffect(() => {
-    // Load persisted settings if any
-    try {
-      const saved = localStorage.getItem('risk_platform_settings');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.dtiLimit) setDtiLimit(parsed.dtiLimit);
-        if (parsed.varConfidence) setVarConfidence(parsed.varConfidence);
-        if (parsed.emergencyTargetMonths) setEmergencyTargetMonths(parsed.emergencyTargetMonths);
-        if (parsed.baseCurrency) setBaseCurrency(parsed.baseCurrency);
-        if (parsed.numberFormat) setNumberFormat(parsed.numberFormat);
-        if (parsed.alertDtiBreach !== undefined) setAlertDtiBreach(parsed.alertDtiBreach);
-        if (parsed.alertLowReserves !== undefined) setAlertLowReserves(parsed.alertLowReserves);
-        if (parsed.alertVarVolatility !== undefined) setAlertVarVolatility(parsed.alertVarVolatility);
-      }
-    } catch (err) {}
+    const handleSettingsUpdated = (e) => {
+      setSettings(e.detail || getSavedSettings());
+    };
+    window.addEventListener('settingsUpdated', handleSettingsUpdated);
+    return () => window.removeEventListener('settingsUpdated', handleSettingsUpdated);
   }, []);
 
-  const saveSettings = (updated) => {
-    try {
-      localStorage.setItem('risk_platform_settings', JSON.stringify(updated));
-      window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: updated }));
-      setToastType('ok');
-      setToastMsg('Settings saved successfully.');
-      setTimeout(() => setToastMsg(''), 3000);
-    } catch (err) {}
+  const updateSetting = (key, value) => {
+    const updated = { ...settings, [key]: value };
+    setSettings(updated);
+    localStorage.setItem('risk_platform_settings', JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: updated }));
+    setToastType('ok');
+    setToastMsg(`Setting '${key}' saved.`);
+    setTimeout(() => setToastMsg(''), 2500);
   };
 
   const handleForceReSync = () => {
@@ -68,7 +45,7 @@ export function Settings() {
       window.dispatchEvent(new CustomEvent('settingsUpdated'));
       setToastType('ok');
       setToastMsg('Supabase state re-synchronized cleanly.');
-      setTimeout(() => setToastMsg(''), 3000);
+      setTimeout(() => setToastMsg(''), 2500);
     } catch (err) {
       setToastType('error');
       setToastMsg('Re-sync failed.');
@@ -86,18 +63,12 @@ export function Settings() {
       alertLowReserves: true,
       alertVarVolatility: true
     };
-    setDtiLimit(36);
-    setVarConfidence(95);
-    setEmergencyTargetMonths(6);
-    setBaseCurrency('INR');
-    setNumberFormat('LAKHS');
-    setAlertDtiBreach(true);
-    setAlertLowReserves(true);
-    setAlertVarVolatility(true);
-    saveSettings(defaults);
+    setSettings(defaults);
+    localStorage.setItem('risk_platform_settings', JSON.stringify(defaults));
+    window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: defaults }));
     setToastType('ok');
     setToastMsg('Platform settings reset to defaults.');
-    setTimeout(() => setToastMsg(''), 3000);
+    setTimeout(() => setToastMsg(''), 2500);
   };
 
   return (
@@ -141,18 +112,14 @@ export function Settings() {
                 <label className="font-semibold text-slate-800 dark:text-slate-200">
                   Target Debt-to-Income (DTI) Limit
                 </label>
-                <span className="font-extrabold text-sky-500">{dtiLimit}%</span>
+                <span className="font-extrabold text-sky-500">{settings.dtiLimit}%</span>
               </div>
               <input
                 type="range"
                 min="20"
                 max="60"
-                value={dtiLimit}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setDtiLimit(val);
-                  saveSettings({ dtiLimit: val, varConfidence, emergencyTargetMonths, baseCurrency, numberFormat, alertDtiBreach, alertLowReserves, alertVarVolatility });
-                }}
+                value={settings.dtiLimit}
+                onChange={(e) => updateSetting('dtiLimit', Number(e.target.value))}
                 className="w-full accent-sky-500 cursor-pointer"
               />
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -168,12 +135,9 @@ export function Settings() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setVarConfidence(95);
-                    saveSettings({ dtiLimit, varConfidence: 95, emergencyTargetMonths, baseCurrency, numberFormat, alertDtiBreach, alertLowReserves, alertVarVolatility });
-                  }}
+                  onClick={() => updateSetting('varConfidence', 95)}
                   className={`py-2 text-xs font-extrabold rounded-xl border transition-colors ${
-                    varConfidence === 95
+                    settings.varConfidence === 95
                       ? 'bg-sky-600 text-white border-sky-500 shadow-md'
                       : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
                   }`}
@@ -182,12 +146,9 @@ export function Settings() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setVarConfidence(99);
-                    saveSettings({ dtiLimit, varConfidence: 99, emergencyTargetMonths, baseCurrency, numberFormat, alertDtiBreach, alertLowReserves, alertVarVolatility });
-                  }}
+                  onClick={() => updateSetting('varConfidence', 99)}
                   className={`py-2 text-xs font-extrabold rounded-xl border transition-colors ${
-                    varConfidence === 99
+                    settings.varConfidence === 99
                       ? 'bg-sky-600 text-white border-sky-500 shadow-md'
                       : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
                   }`}
@@ -203,12 +164,8 @@ export function Settings() {
                 Emergency Reserve Coverage Target
               </label>
               <select
-                value={emergencyTargetMonths}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setEmergencyTargetMonths(val);
-                  saveSettings({ dtiLimit, varConfidence, emergencyTargetMonths: val, baseCurrency, numberFormat, alertDtiBreach, alertLowReserves, alertVarVolatility });
-                }}
+                value={settings.emergencyTargetMonths}
+                onChange={(e) => updateSetting('emergencyTargetMonths', Number(e.target.value))}
                 className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-sky-500"
               >
                 <option value={3}>3 Months Essential Expenses</option>
@@ -235,12 +192,9 @@ export function Settings() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setBaseCurrency('INR');
-                    saveSettings({ dtiLimit, varConfidence, emergencyTargetMonths, baseCurrency: 'INR', numberFormat, alertDtiBreach, alertLowReserves, alertVarVolatility });
-                  }}
+                  onClick={() => updateSetting('baseCurrency', 'INR')}
                   className={`py-2 text-xs font-extrabold rounded-xl border transition-colors flex items-center justify-center gap-1.5 ${
-                    baseCurrency === 'INR'
+                    settings.baseCurrency === 'INR'
                       ? 'bg-sky-600 text-white border-sky-500 shadow-md'
                       : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
                   }`}
@@ -249,12 +203,9 @@ export function Settings() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setBaseCurrency('USD');
-                    saveSettings({ dtiLimit, varConfidence, emergencyTargetMonths, baseCurrency: 'USD', numberFormat, alertDtiBreach, alertLowReserves, alertVarVolatility });
-                  }}
+                  onClick={() => updateSetting('baseCurrency', 'USD')}
                   className={`py-2 text-xs font-extrabold rounded-xl border transition-colors flex items-center justify-center gap-1.5 ${
-                    baseCurrency === 'USD'
+                    settings.baseCurrency === 'USD'
                       ? 'bg-sky-600 text-white border-sky-500 shadow-md'
                       : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
                   }`}
@@ -272,12 +223,9 @@ export function Settings() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setNumberFormat('LAKHS');
-                    saveSettings({ dtiLimit, varConfidence, emergencyTargetMonths, baseCurrency, numberFormat: 'LAKHS', alertDtiBreach, alertLowReserves, alertVarVolatility });
-                  }}
+                  onClick={() => updateSetting('numberFormat', 'LAKHS')}
                   className={`py-2 text-xs font-extrabold rounded-xl border transition-colors ${
-                    numberFormat === 'LAKHS'
+                    settings.numberFormat === 'LAKHS'
                       ? 'bg-sky-600 text-white border-sky-500 shadow-md'
                       : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
                   }`}
@@ -286,12 +234,9 @@ export function Settings() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setNumberFormat('THOUSANDS');
-                    saveSettings({ dtiLimit, varConfidence, emergencyTargetMonths, baseCurrency, numberFormat: 'THOUSANDS', alertDtiBreach, alertLowReserves, alertVarVolatility });
-                  }}
+                  onClick={() => updateSetting('numberFormat', 'THOUSANDS')}
                   className={`py-2 text-xs font-extrabold rounded-xl border transition-colors ${
-                    numberFormat === 'THOUSANDS'
+                    settings.numberFormat === 'THOUSANDS'
                       ? 'bg-sky-600 text-white border-sky-500 shadow-md'
                       : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
                   }`}
@@ -313,16 +258,12 @@ export function Settings() {
           <div className="space-y-3 pt-1">
             <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 cursor-pointer">
               <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                Alert when Debt-to-Income exceeds 40%
+                Alert when Debt-to-Income exceeds {settings.dtiLimit}%
               </span>
               <input
                 type="checkbox"
-                checked={alertDtiBreach}
-                onChange={(e) => {
-                  const val = e.target.checked;
-                  setAlertDtiBreach(val);
-                  saveSettings({ dtiLimit, varConfidence, emergencyTargetMonths, baseCurrency, numberFormat, alertDtiBreach: val, alertLowReserves, alertVarVolatility });
-                }}
+                checked={settings.alertDtiBreach}
+                onChange={(e) => updateSetting('alertDtiBreach', e.target.checked)}
                 className="w-4 h-4 rounded accent-sky-500 cursor-pointer"
               />
             </label>
@@ -333,12 +274,8 @@ export function Settings() {
               </span>
               <input
                 type="checkbox"
-                checked={alertLowReserves}
-                onChange={(e) => {
-                  const val = e.target.checked;
-                  setAlertLowReserves(val);
-                  saveSettings({ dtiLimit, varConfidence, emergencyTargetMonths, baseCurrency, numberFormat, alertDtiBreach, alertLowReserves: val, alertVarVolatility });
-                }}
+                checked={settings.alertLowReserves}
+                onChange={(e) => updateSetting('alertLowReserves', e.target.checked)}
                 className="w-4 h-4 rounded accent-sky-500 cursor-pointer"
               />
             </label>
@@ -349,12 +286,8 @@ export function Settings() {
               </span>
               <input
                 type="checkbox"
-                checked={alertVarVolatility}
-                onChange={(e) => {
-                  const val = e.target.checked;
-                  setAlertVarVolatility(val);
-                  saveSettings({ dtiLimit, varConfidence, emergencyTargetMonths, baseCurrency, numberFormat, alertDtiBreach, alertLowReserves, alertVarVolatility: val });
-                }}
+                checked={settings.alertVarVolatility}
+                onChange={(e) => updateSetting('alertVarVolatility', e.target.checked)}
                 className="w-4 h-4 rounded accent-sky-500 cursor-pointer"
               />
             </label>

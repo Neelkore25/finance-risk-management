@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 /**
@@ -17,6 +18,26 @@ export function getSavedSettings() {
     alertDtiBreach: true,
     alertLowReserves: true,
     alertVarVolatility: true
+  };
+}
+
+/**
+ * Custom React hook for auto-subscribing components to platform settings updates
+ */
+export function useSettings() {
+  const [settings, setSettings] = useState(getSavedSettings);
+
+  useEffect(() => {
+    const handleSettingsUpdated = (e) => {
+      setSettings(e.detail || getSavedSettings());
+    };
+    window.addEventListener('settingsUpdated', handleSettingsUpdated);
+    return () => window.removeEventListener('settingsUpdated', handleSettingsUpdated);
+  }, []);
+
+  return {
+    settings,
+    formatCurrency: (amount) => formatCurrency(amount)
   };
 }
 
