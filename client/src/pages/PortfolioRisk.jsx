@@ -83,62 +83,70 @@ export function PortfolioRisk() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="opaque-card space-y-2 border-l-4 border-l-rose-500">
           <span className="text-xs font-semibold text-slate-500 block">Historical VaR (1-Day {confidence * 100}%)</span>
-          <span className="text-2xl font-extrabold text-rose-500">${metrics?.historicalVaR1DayAmount?.toLocaleString()}</span>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-3xl font-extrabold text-rose-500 font-mono tabular-nums">${metrics?.historicalVaR1DayAmount?.toLocaleString()}</span>
+          <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
             {metrics?.historicalVaR1DayPct}% maximum expected daily portfolio loss under normal market conditions.
           </p>
-          <p className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-200 dark:border-slate-800">
-            Formula: 5th/1st percentile of sorted daily return loss distribution.
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200 dark:border-slate-800">
+            💡 <strong>Micro-copy:</strong> Worst-case daily loss threshold at {confidence * 100}% confidence level.
           </p>
         </div>
 
         <div className="opaque-card space-y-2 border-l-4 border-l-amber-500">
           <span className="text-xs font-semibold text-slate-500 block">Parametric VaR (1-Day {confidence * 100}%)</span>
-          <span className="text-2xl font-extrabold text-amber-500">${metrics?.parametricVaR1DayAmount?.toLocaleString()}</span>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-3xl font-extrabold text-amber-500 font-mono tabular-nums">${metrics?.parametricVaR1DayAmount?.toLocaleString()}</span>
+          <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
             {metrics?.parametricVaR1DayPct}% loss derived under normal return distribution assumption.
           </p>
-          <p className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-200 dark:border-slate-800">
-            Formula: (Mean Return − z · StdDev) × Portfolio Value.
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200 dark:border-slate-800">
+            💡 <strong>Micro-copy:</strong> Gaussian distribution model estimate: (Mean − z · StdDev) × Portfolio Value.
           </p>
         </div>
 
         <div className="opaque-card space-y-2 border-l-4 border-l-purple-500">
           <span className="text-xs font-semibold text-slate-500 block">CVaR / Expected Shortfall</span>
-          <span className="text-2xl font-extrabold text-purple-500">${metrics?.cvar1DayAmount?.toLocaleString()}</span>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {metrics?.cvar1DayPct}% average loss when tail loss exceeds the VaR threshold.
+          <span className="text-3xl font-extrabold text-purple-500 font-mono tabular-nums">${metrics?.cvar1DayAmount?.toLocaleString()}</span>
+          <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+            {metrics?.cvar1DayPct}% average loss when market tail loss breaches the VaR threshold.
           </p>
-          <p className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-200 dark:border-slate-800">
-            Formula: Mean of all portfolio losses exceeding VaR threshold.
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200 dark:border-slate-800">
+            💡 <strong>Expected loss in worst-case tail scenarios</strong> beyond the normal VaR threshold.
           </p>
         </div>
       </div>
 
       {/* Secondary Performance Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Sharpe Ratio</span>
-          <span className="text-xl font-extrabold text-emerald-500">{metrics?.sharpeRatio}</span>
-          <span className="text-[10px] text-slate-400 block mt-1">(Annual Return − 4.0% Risk Free) / Volatility</span>
+        <div className="opaque-card space-y-1">
+          <span className="text-xs font-semibold text-slate-500 block">Sharpe Ratio</span>
+          <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">{metrics?.sharpeRatio}</span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800">
+            💡 <strong>Risk-adjusted return — higher is better</strong> ((Return − 4% Risk-Free) / Volatility).
+          </span>
         </div>
 
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Portfolio Beta</span>
-          <span className="text-xl font-extrabold text-sky-500">{metrics?.beta}</span>
-          <span className="text-[10px] text-slate-400 block mt-1">Sensitivity relative to S&P benchmark</span>
+        <div className="opaque-card space-y-1">
+          <span className="text-xs font-semibold text-slate-500 block">Portfolio Beta</span>
+          <span className="text-2xl font-extrabold text-[#2563EB] dark:text-[#0EA5E9] font-mono tabular-nums">{metrics?.beta}</span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800">
+            💡 <strong>Market sensitivity relative to S&P 500 benchmark</strong> (Beta &gt; 1.0 = higher volatility).
+          </span>
         </div>
 
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Annual Volatility</span>
-          <span className="text-xl font-extrabold text-slate-900 dark:text-white">{metrics?.annualizedVol}%</span>
-          <span className="text-[10px] text-slate-400 block mt-1">Annualized Standard Deviation</span>
+        <div className="opaque-card space-y-1">
+          <span className="text-xs font-semibold text-slate-500 block">Annual Volatility</span>
+          <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums">{metrics?.annualizedVol}%</span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800">
+            💡 <strong>Annualized Standard Deviation</strong> of historical daily returns.
+          </span>
         </div>
 
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Maximum Drawdown</span>
-          <span className="text-xl font-extrabold text-rose-500">{metrics?.maxDrawdownPct}%</span>
-          <span className="text-[10px] text-slate-400 block mt-1">Largest peak-to-trough drop</span>
+        <div className="opaque-card space-y-1">
+          <span className="text-xs font-semibold text-slate-500 block">Maximum Drawdown</span>
+          <span className="text-2xl font-extrabold text-rose-500 font-mono tabular-nums">{metrics?.maxDrawdownPct}%</span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800">
+            💡 <strong>Largest peak-to-trough historical drop</strong> across historical returns.
+          </span>
         </div>
       </div>
 

@@ -10,10 +10,11 @@ import numpy as np
 import pandas as pd
 
 from credit_risk_ml import train_and_predict_credit_risk
-from quantitative_var import calculate_portfolio_var
-from monte_carlo_engine import run_monte_carlo_gbm
+from quantitative_var import calculate_portfolio_var, calculate_quantitative_var
+from monte_carlo_engine import run_monte_carlo_simulation, run_monte_carlo_gbm
 from personal_risk_engine import compute_personal_risk_assessment
 from analytics.risk_segmentation import fit_risk_segmentation_clusters
+
 
 # Load environment variables from .env
 load_dotenv()
@@ -70,6 +71,7 @@ class VaRCalculateRequest(BaseModel):
     portfolio_value: float = 250000
     confidence_level: float = 0.95
     time_horizon_days: int = 1
+    portfolio_holdings: Optional[List[Dict[str, Any]]] = []
 
 class WhatIfRequest(BaseModel):
     income_change_pct: float = 0.0
@@ -225,8 +227,17 @@ def predict_credit_risk(req: CreditPredictRequest):
 
 @app.post("/api/v1/var/calculate")
 def calculate_var(req: VaRCalculateRequest):
-    var_result = calculate_portfolio_var(req.portfolio_value, req.confidence_level, req.time_horizon_days)
-    mc_result = run_monte_carlo_gbm(req.portfolio_value, req.time_horizon_days)
+    var_result = calculate_portfolio_var(
+        portfolio_value=req.portfolio_value,
+        confidence_level=req.confidence_level,
+        time_horizon_days=req.time_horizon_days,
+        portfolio_holdings=req.portfolio_holdings
+    )
+    mc_result = run_monte_carlo_simulation(
+        initial_value=req.portfolio_value,
+        num_simulations=1000,
+        horizon_months=12
+    )
     return {
         "portfolioRisk": var_result,
         "monteCarlo": mc_result

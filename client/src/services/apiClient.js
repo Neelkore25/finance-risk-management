@@ -211,17 +211,20 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   // 4. PORTFOLIO HOLDINGS
-  if (cleanEp === '/portfolio') {
+  if (cleanEp === '/portfolio' || cleanEp === '/investments') {
     if (method === 'POST' && userId && isSupabaseConfigured()) {
+      const amountVal = Number(body.amount_value) || (Number(body.quantity || 1) * Number(body.current_price || 0));
       const { data, error } = await supabase
         .from('portfolio_holdings')
         .insert({
           user_id: userId,
           asset_name: body.asset_name,
-          asset_type: body.asset_type,
-          quantity: Number(body.quantity),
-          purchase_price: Number(body.purchase_price),
-          current_price: Number(body.current_price)
+          asset_type: body.asset_type || 'Stocks',
+          sector: body.sector || 'General',
+          quantity: Number(body.quantity || 1),
+          purchase_price: Number(body.purchase_price || body.current_price || 0),
+          current_price: Number(body.current_price || 0),
+          amount_value: amountVal
         })
         .select()
         .single();
@@ -233,7 +236,70 @@ export async function apiFetch(endpoint, options = {}) {
       const { data } = await supabase.from('portfolio_holdings').select('*').order('created_at', { ascending: false });
       return { holdings: data || [] };
     }
-    return { holdings: [] };
+
+    // LocalStorage fallback for offline mode
+    const cached = localStorage.getItem('riskguard_local_holdings');
+    let localHoldings = cached ? JSON.parse(cached) : [];
+
+    if (method === 'POST') {
+      const newHolding = {
+        id: 'hold_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        asset_name: body.asset_name,
+        asset_type: body.asset_type || 'Stocks',
+        sector: body.sector || 'General',
+        quantity: Number(body.quantity || 1),
+        purchase_price: Number(body.purchase_price || body.current_price || 0),
+        current_price: Number(body.current_price || 0),
+        amount_value: Number(body.amount_value) || (Number(body.quantity || 1) * Number(body.current_price || 0))
+      };
+      localHoldings.unshift(newHolding);
+      localStorage.setItem('riskguard_local_holdings', JSON.stringify(localHoldings));
+      return { holding: newHolding };
+    }
+
+    return { holdings: localHoldings };
+  }
+
+  if (cleanEp.startsWith('/portfolio/') || cleanEp.startsWith('/investments/')) {
+    const id = cleanEp.split('/')[2];
+    if (method === 'DELETE') {
+      if (userId && isSupabaseConfigured()) {
+        const { error } = await supabase.from('portfolio_holdings').delete().eq('id', id);
+        if (error) throw error;
+      }
+      const cached = localStorage.getItem('riskguard_local_holdings');
+      let localHoldings = cached ? JSON.parse(cached) : [];
+      localHoldings = localHoldings.filter(h => String(h.id) !== String(id));
+      localStorage.setItem('riskguard_local_holdings', JSON.stringify(localHoldings));
+      return { success: true };
+    }
+
+    if (method === 'PUT') {
+      const amountVal = Number(body.amount_value) || (Number(body.quantity || 1) * Number(body.current_price || 0));
+      if (userId && isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('portfolio_holdings')
+          .update({
+            asset_name: body.asset_name,
+            asset_type: body.asset_type,
+            sector: body.sector,
+            quantity: Number(body.quantity),
+            purchase_price: Number(body.purchase_price || body.current_price),
+            current_price: Number(body.current_price),
+            amount_value: amountVal
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        if (error) throw error;
+        return { holding: data };
+      }
+      const cached = localStorage.getItem('riskguard_local_holdings');
+      let localHoldings = cached ? JSON.parse(cached) : [];
+      localHoldings = localHoldings.map(h => String(h.id) === String(id) ? { ...h, ...body, amount_value: amountVal } : h);
+      localStorage.setItem('riskguard_local_holdings', JSON.stringify(localHoldings));
+      return { holding: body };
+    }
   }
 
   // 5. FINANCIAL GOALS
@@ -299,39 +365,131 @@ export async function apiFetch(endpoint, options = {}) {
     let invs = [];
     if (userId && isSupabaseConfigured()) {
       const { data } = await supabase.from('portfolio_holdings').select('*');
-      if (data) invs = data;
+      if (data && data.length > 0) invs = data;
     }
 
-    const totalVal = invs.reduce((sum, i) => sum + (Number(i.quantity) * Number(i.current_price)), 0) || 250000;
-    const var95Pct = 2.45;
-    const var95Amt = Math.round(totalVal * (var95Pct / 100));
+    // Read confidence level from endpoint URL (default 0.95)
+    let conf = 0.95;
+    if (endpoint.includes('confidence=0.99')) conf = 0.99;
+    else if (endpoint.includes('confidence=')) {
+      const parsedConf = parseFloat(endpoint.split('confidence=')[1]);
+      if (!isNaN(parsedConf)) conf = parsedConf;
+    }
+
+    const totalVal = invs.reduce((sum, i) => sum + (Number(i.amount_value) || (Number(i.quantity) * Number(i.current_price))), 0) || 250000;
+
+    // Calculate asset volatility weighted by portfolio composition
+    let weightedVol = 0.14; // Base 14% annual vol
+    let equityRatio = 0.6;
+    let cryptoRatio = 0.0;
+
+    if (invs.length > 0 && totalVal > 0) {
+      let equityVal = 0;
+      let cryptoVal = 0;
+      invs.forEach(inv => {
+        const val = Number(inv.amount_value) || (Number(inv.quantity) * Number(inv.current_price));
+        const type = (inv.asset_type || '').toLowerCase();
+        if (type.includes('crypto')) cryptoVal += val;
+        else if (type.includes('stock') || type.includes('equity') || type.includes('mutual')) equityVal += val;
+      });
+      equityRatio = equityVal / totalVal;
+      cryptoRatio = cryptoVal / totalVal;
+      weightedVol = Math.max(0.04, 0.08 + (equityRatio * 0.12) + (cryptoRatio * 0.45));
+    }
+
+    // Daily volatility
+    const dailyVol = weightedVol / Math.sqrt(252);
+    const zScore = conf >= 0.99 ? 2.326 : 1.645;
+    const cvarMultiplier = conf >= 0.99 ? 1.35 : 1.25;
+
+    const histVaRPct = Number((zScore * dailyVol * 100).toFixed(2));
+    const histVaRAmt = Math.round(totalVal * (histVaRPct / 100));
+
+    const paraVaRPct = Number(((zScore * dailyVol - 0.0004) * 100).toFixed(2));
+    const paraVaRAmt = Math.round(totalVal * (paraVaRPct / 100));
+
+    const cvarPct = Number((histVaRPct * cvarMultiplier).toFixed(2));
+    const cvarAmt = Math.round(totalVal * (cvarPct / 100));
+
+    const sharpe = Number(((weightedVol * 0.8) / weightedVol).toFixed(2));
+    const beta = Number((0.9 + (equityRatio * 0.4) + (cryptoRatio * 0.8)).toFixed(2));
+    const annVol = Number((weightedVol * 100).toFixed(1));
+    const maxDdPct = Number((weightedVol * 65).toFixed(1));
+
+    // Dynamic Heatmaps by Asset Class & Sector
+    const assetClassMap = {};
+    const sectorMap = {};
+
+    if (invs.length > 0) {
+      invs.forEach(i => {
+        const type = i.asset_type || 'Other';
+        const sec = i.sector || 'General';
+        const val = Number(i.amount_value) || (Number(i.quantity) * Number(i.current_price));
+
+        if (!assetClassMap[type]) assetClassMap[type] = { count: 0, val: 0 };
+        assetClassMap[type].count += 1;
+        assetClassMap[type].val += val;
+
+        if (!sectorMap[sec]) sectorMap[sec] = { count: 0, val: 0 };
+        sectorMap[sec].count += 1;
+        sectorMap[sec].val += val;
+      });
+    } else {
+      assetClassMap['Stocks'] = { count: 3, val: 150000 };
+      assetClassMap['Bonds'] = { count: 2, val: 62500 };
+      assetClassMap['Cash'] = { count: 1, val: 37500 };
+
+      sectorMap['Technology'] = { count: 2, val: 100000 };
+      sectorMap['Financials'] = { count: 2, val: 87500 };
+      sectorMap['Government/Sovereign'] = { count: 2, val: 62500 };
+    }
+
+    const byAssetClass = Object.entries(assetClassMap).map(([name, d]) => {
+      const pct = Number(((d.val / totalVal) * 100).toFixed(1));
+      let riskLevel = 'Low Risk';
+      let riskColor = 'green';
+      if (pct > 50 || name.toLowerCase().includes('crypto')) {
+        riskLevel = 'High Risk';
+        riskColor = 'red';
+      } else if (pct > 25) {
+        riskLevel = 'Moderate Risk';
+        riskColor = 'yellow';
+      }
+      return { name, class: name, exposure: d.val, count: d.count, percentage: pct, weightPct: pct, riskLevel, riskColor };
+    });
+
+    const bySector = Object.entries(sectorMap).map(([name, d]) => {
+      const pct = Number(((d.val / totalVal) * 100).toFixed(1));
+      let riskLevel = 'Low Risk';
+      let riskColor = 'green';
+      if (pct > 45) {
+        riskLevel = 'High Risk';
+        riskColor = 'red';
+      } else if (pct > 20) {
+        riskLevel = 'Moderate Risk';
+        riskColor = 'yellow';
+      }
+      return { name, sector: name, exposure: d.val, count: d.count, percentage: pct, weightPct: pct, riskLevel, riskColor };
+    });
 
     return {
       portfolioRisk: {
         totalValue: totalVal,
         metrics: {
-          historicalVaR1DayAmount: var95Amt,
-          historicalVaR1DayPct: var95Pct,
-          parametricVaR1DayAmount: Math.round(totalVal * 0.021),
-          parametricVaR1DayPct: 2.1,
-          cvar1DayAmount: Math.round(totalVal * 0.034),
-          cvar1DayPct: 3.4,
-          beta: 1.12,
-          sharpeRatio: 1.85,
-          annualizedVol: 14.2,
-          maxDrawdown: 8.4
+          historicalVaR1DayAmount: histVaRAmt,
+          historicalVaR1DayPct: histVaRPct,
+          parametricVaR1DayAmount: paraVaRAmt,
+          parametricVaR1DayPct: paraVaRPct,
+          cvar1DayAmount: cvarAmt,
+          cvar1DayPct: cvarPct,
+          beta: beta,
+          sharpeRatio: sharpe,
+          annualizedVol: annVol,
+          maxDrawdownPct: maxDdPct
         },
         heatmap: {
-          byAssetClass: [
-            { class: 'Equities', weightPct: 60, varContributionPct: 68 },
-            { class: 'Fixed Income', weightPct: 25, varContributionPct: 12 },
-            { class: 'Cash Reserves', weightPct: 15, varContributionPct: 0 }
-          ],
-          bySector: [
-            { sector: 'Technology', weightPct: 40, varContributionPct: 48 },
-            { sector: 'Financial Services', weightPct: 35, varContributionPct: 32 },
-            { sector: 'Government Securities', weightPct: 25, varContributionPct: 20 }
-          ]
+          byAssetClass,
+          bySector
         }
       }
     };

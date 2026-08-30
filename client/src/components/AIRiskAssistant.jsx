@@ -434,35 +434,35 @@ export function AIRiskAssistant() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 p-3.5 bg-[#0D111A] hover:bg-[#1E293B] text-[#00F5FF] rounded-full shadow-[0_0_20px_rgba(0,245,255,0.4)] transition-all duration-200 flex items-center gap-2 border-2 border-[#00F5FF]/50 opacity-100 group"
+          className="fixed bottom-6 right-6 z-50 p-3.5 bg-[#F8FAFC] dark:bg-[#111827] hover:bg-slate-100 dark:hover:bg-[#1E293B] text-[#2563EB] dark:text-[#0EA5E9] rounded-full shadow-lg transition-all duration-200 flex items-center gap-2 border-2 border-[#CBD5E1] dark:border-[#1F2937] opacity-100 group"
           title="Open AI Risk Assistant"
         >
-          <Sparkles className="w-5 h-5 text-[#00F5FF] animate-pulse" />
+          <Sparkles className="w-5 h-5 text-[#2563EB] dark:text-[#0EA5E9] animate-pulse" />
           <span className="text-xs font-extrabold hidden sm:inline pr-1">AI Risk Assistant</span>
         </button>
       )}
 
       {/* AI Chat Modal */}
       {isOpen && (
-        <div className="fixed bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[430px] h-[560px] bg-[#0D111A] border border-[#00F5FF]/40 rounded-2xl shadow-[0_0_30px_rgba(0,245,255,0.2)] flex flex-col opacity-100 overflow-hidden font-sans">
+        <div className="fixed bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[430px] h-[560px] bg-[#F8FAFC] dark:bg-[#111827] border border-[#CBD5E1] dark:border-[#1F2937] rounded-2xl shadow-xl flex flex-col opacity-100 overflow-hidden font-sans text-[#0F172A] dark:text-[#F3F4F6]">
           {/* Header with Step Progress Tracker */}
-          <div className="p-4 bg-[#07080D] text-white flex flex-col gap-2 border-b border-[#00F5FF]/20">
+          <div className="p-4 bg-[#EDF2F7] dark:bg-[#0B0F17] flex flex-col gap-2 border-b border-[#CBD5E1] dark:border-[#1F2937]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-[#00F5FF]/10 rounded-lg border border-[#00F5FF]/30">
-                  <Bot className="w-5 h-5 text-[#00F5FF]" />
+                <div className="p-2 bg-blue-50 dark:bg-sky-950/40 rounded-lg border border-blue-200 dark:border-sky-800">
+                  <Bot className="w-5 h-5 text-[#2563EB] dark:text-[#0EA5E9]" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-extrabold text-white tracking-wide font-display">AI Risk Assistant</h3>
-                  <span className="text-[10px] text-[#00F5A0] font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00F5A0] animate-ping" />
+                  <h3 className="text-xs font-extrabold text-[#0F172A] dark:text-white tracking-wide font-display">AI Risk Assistant</h3>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                     {wizardStep > 0 ? `Step ${wizardStep} of 6: ${STEP_DEFINITIONS[wizardStep - 1].title}` : 'Gemini 2.5 LLM Active'}
                   </span>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 rounded-lg text-[#A0AEC0] hover:text-white hover:bg-[#1E293B] transition-colors"
+                className="p-1 rounded-lg text-slate-500 dark:text-[#9CA3AF] hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-[#1E293B] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -470,9 +470,9 @@ export function AIRiskAssistant() {
 
             {/* Progress Bar when Wizard Active */}
             {wizardStep > 0 && (
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1">
+              <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1">
                 <div 
-                  className="bg-gradient-to-r from-[#00F5FF] to-[#00F5A0] h-full transition-all duration-300 shadow-[0_0_10px_rgba(0,245,255,0.8)]"
+                  className="bg-[#2563EB] dark:bg-[#0EA5E9] h-full transition-all duration-300"
                   style={{ width: `${(wizardStep / 6) * 100}%` }}
                 />
               </div>
@@ -480,19 +480,19 @@ export function AIRiskAssistant() {
           </div>
 
           {/* Quick Prompt Action Pills */}
-          <div className="p-2.5 bg-[#07080D] border-b border-[#00F5FF]/20 overflow-x-auto flex gap-1.5 no-scrollbar">
+          <div className="p-2.5 bg-[#EDF2F7] dark:bg-[#0B0F17] border-b border-[#CBD5E1] dark:border-[#1F2937] overflow-x-auto flex gap-1.5 no-scrollbar">
             <button
               onClick={start6StepOnboarding}
-              className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-[#00F5FF] text-[#0A0B10] shadow-[0_0_10px_rgba(0,245,255,0.4)] whitespace-nowrap hover:bg-[#00F5A0] transition-colors flex items-center gap-1 shrink-0"
+              className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-[#2563EB] dark:bg-[#0EA5E9] text-white shadow-sm whitespace-nowrap hover:bg-blue-700 dark:hover:bg-sky-400 transition-colors flex items-center gap-1 shrink-0"
             >
-              <Wand2 className="w-3 h-3 text-[#0A0B10]" />
+              <Wand2 className="w-3 h-3 text-white" />
               🪄 Start 6-Step Onboarding
             </button>
 
             {wizardStep > 0 && (
               <button
                 onClick={handleSkipStep}
-                className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap hover:bg-amber-500/30 transition-colors flex items-center gap-1 shrink-0"
+                className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800 whitespace-nowrap hover:bg-amber-200 transition-colors flex items-center gap-1 shrink-0"
               >
                 <SkipForward className="w-3 h-3" />
                 ⏩ Skip Step
@@ -501,35 +501,35 @@ export function AIRiskAssistant() {
 
             <button
               onClick={() => handleSend("What is Value at Risk (VaR)?")}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#0D111A] text-[#00F5FF] border border-[#00F5FF]/30 whitespace-nowrap hover:bg-[#1E293B] transition-colors shrink-0"
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-[#111827] text-[#2563EB] dark:text-[#0EA5E9] border border-[#CBD5E1] dark:border-[#1F2937] whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             >
               📈 What is VaR?
             </button>
             <button
               onClick={() => handleSend("What is Monthly Debt Service?")}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[#0D111A] text-amber-300 border border-amber-500/30 whitespace-nowrap hover:bg-[#1E293B] transition-colors shrink-0"
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-[#111827] text-amber-700 dark:text-amber-300 border border-[#CBD5E1] dark:border-[#1F2937] whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             >
               💳 Debt Service
             </button>
           </div>
 
           {/* Chat Messages Body */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#07080D]/60 text-xs">
+          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-100/70 dark:bg-[#07080D]/60 text-xs">
             {messages.map((msg, i) => (
               <div
                 key={i}
                 className={`flex gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.sender === 'ai' && (
-                  <div className="w-6 h-6 rounded-full bg-[#00F5FF] text-[#0A0B10] flex items-center justify-center shrink-0 mt-0.5 font-extrabold text-[10px]">
+                  <div className="w-6 h-6 rounded-full bg-[#2563EB] dark:bg-[#0EA5E9] text-white flex items-center justify-center shrink-0 mt-0.5 font-extrabold text-[10px]">
                     AI
                   </div>
                 )}
                 <div
                   className={`max-w-[85%] p-3 rounded-xl leading-relaxed opacity-100 text-xs ${
                     msg.sender === 'user'
-                      ? 'bg-[#00F5FF] text-[#0A0B10] rounded-br-none shadow-sm font-bold'
-                      : 'bg-[#0A0B10] text-[#FFFFFF] border border-[#00F5FF]/20 rounded-bl-none shadow-sm'
+                      ? 'bg-[#2563EB] dark:bg-[#0EA5E9] text-white rounded-br-none shadow-sm font-bold'
+                      : 'bg-white dark:bg-[#0B0F17] text-[#0F172A] dark:text-[#F3F4F6] border border-[#CBD5E1] dark:border-slate-800 rounded-bl-none shadow-sm'
                   }`}
                 >
                   {formatMessageContent(msg.text)}
@@ -537,8 +537,8 @@ export function AIRiskAssistant() {
               </div>
             ))}
             {loading && (
-              <div className="flex items-center gap-2 text-[#A0AEC0] text-xs italic">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#00F5FF]" />
+              <div className="flex items-center gap-2 text-slate-500 dark:text-[#9CA3AF] text-xs italic">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#2563EB] dark:text-[#0EA5E9]" />
                 AI is thinking...
               </div>
             )}
@@ -551,7 +551,7 @@ export function AIRiskAssistant() {
               e.preventDefault();
               handleSend();
             }}
-            className="p-3 bg-[#07080D] border-t border-[#00F5FF]/20 flex items-center gap-2"
+            className="p-3 bg-[#EDF2F7] dark:bg-[#0B0F17] border-t border-[#CBD5E1] dark:border-[#1F2937] flex items-center gap-2"
           >
             <input
               type="text"
@@ -562,12 +562,12 @@ export function AIRiskAssistant() {
                   ? `Step ${wizardStep} of 6 (${STEP_DEFINITIONS[wizardStep - 1].title}): Enter values...`
                   : "Ask any definition or click 'Start 6-Step Onboarding'..."
               }
-              className="flex-1 px-3 py-2 bg-[#0D111A] border border-[#00F5FF]/30 rounded-xl text-xs text-white placeholder-[#A0AEC0] focus:outline-none focus:border-[#00F5FF]"
+              className="flex-1 px-3 py-2 bg-white dark:bg-[#111827] border border-[#CBD5E1] dark:border-[#1F2937] rounded-xl text-xs text-[#0F172A] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#2563EB] dark:focus:border-[#0EA5E9]"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="p-2 bg-[#00F5FF] hover:bg-[#00F5A0] text-[#0A0B10] rounded-xl disabled:opacity-40 transition-colors font-bold"
+              className="p-2 bg-[#2563EB] dark:bg-[#0EA5E9] hover:bg-blue-700 dark:hover:bg-sky-400 text-white rounded-xl disabled:opacity-40 transition-colors font-bold"
             >
               <Send className="w-4 h-4" />
             </button>

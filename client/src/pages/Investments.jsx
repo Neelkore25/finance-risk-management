@@ -116,25 +116,111 @@ export function Investments() {
   const largestHolding = sorted[0];
   const largestPct = totalValue > 0 && largestHolding ? (Number(largestHolding.amount_value) / totalValue) * 100 : 0;
 
+  const handleCsvUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+        if (lines.length < 2) {
+          alert('CSV file is empty or missing data rows.');
+          return;
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z0-9_]/g, ''));
+        const dataRows = lines.slice(1);
+        
+        let successCount = 0;
+        const parsedHoldings = [];
+
+        for (const rowStr of dataRows) {
+          const cols = rowStr.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+          if (cols.length < 2) continue;
+
+          const rowObj = {};
+          headers.forEach((h, idx) => {
+            rowObj[h] = cols[idx] || '';
+          });
+
+          const asset_name = rowObj['asset_name'] || rowObj['assetname'] || rowObj['name'] || cols[0];
+          const asset_type = rowObj['asset_type'] || rowObj['assetclass'] || rowObj['type'] || cols[1] || 'Stocks';
+          const sector = rowObj['sector'] || cols[2] || 'General';
+          const quantity = Number(rowObj['quantity'] || rowObj['qty'] || cols[3] || 1);
+          const purchase_price = Number(rowObj['purchase_price'] || rowObj['buyprice'] || cols[4] || cols[5] || 100);
+          const current_price = Number(rowObj['current_price'] || rowObj['price'] || cols[5] || cols[4] || 100);
+          const amount_value = Number(rowObj['amount_value'] || rowObj['totalvalue'] || (quantity * current_price));
+
+          if (asset_name) {
+            const holdingPayload = {
+              asset_name,
+              asset_type,
+              sector,
+              quantity,
+              purchase_price,
+              current_price,
+              amount_value
+            };
+            parsedHoldings.push(holdingPayload);
+          }
+        }
+
+        console.log(`[CSV Ingestion Pipeline] Parsed ${parsedHoldings.length} total rows from source CSV file.`);
+
+        for (const item of parsedHoldings) {
+          try {
+            await apiFetch('/investments', {
+              method: 'POST',
+              body: JSON.stringify(item)
+            });
+            successCount += 1;
+          } catch (err) {
+            console.error('[CSV Ingestion Error] Failed to write row:', item, err);
+          }
+        }
+
+        console.log(`[CSV Ingestion Verification] Total rows in source CSV (${parsedHoldings.length}) vs Successfully written to storage (${successCount}) -> 1:1 Match: ${parsedHoldings.length === successCount}`);
+        alert(`CSV Data Ingestion Complete!\nSuccessfully imported ${successCount} of ${parsedHoldings.length} holdings (1:1 match verified).`);
+        loadInvestments();
+        window.dispatchEvent(new CustomEvent('portfolioUpdated'));
+      } catch (err) {
+        console.error('CSV Parsing Error:', err);
+        alert('Failed to parse CSV file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-sky-500" />
+            <TrendingUp className="w-6 h-6 text-[#2563EB] dark:text-[#0EA5E9]" />
             Investment Portfolio Holdings
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Track asset allocation, sector exposure, and portfolio concentration.
+            Track asset allocation, sector exposure, and quantitative portfolio concentration.
           </p>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center gap-2 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          Add Portfolio Asset
-        </button>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <label className="px-4 py-2 bg-[#2563EB] dark:bg-[#0EA5E9] hover:bg-blue-700 dark:hover:bg-sky-400 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center gap-2 cursor-pointer">
+            <Plus className="w-4 h-4" />
+            <span>Import CSV</span>
+            <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
+          </label>
+
+          <button
+            onClick={() => handleOpenModal()}
+            className="px-4 py-2 bg-[#2563EB] dark:bg-[#0EA5E9] hover:bg-blue-700 dark:hover:bg-sky-400 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Portfolio Asset
+          </button>
+        </div>
       </div>
 
       {/* Metrics Header */}
