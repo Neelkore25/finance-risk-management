@@ -82,6 +82,10 @@ def run_monte_carlo_simulation(initial_value=10000, annual_mu=0.09, annual_sigma
     }
 
 
+# Backward-compatible alias
+run_monte_carlo_gbm = run_monte_carlo_simulation
+
+
 if __name__ == '__main__':
     res = run_monte_carlo_simulation(25000, 0.10, 0.18, 10000, 12, 500)
     print("Monte Carlo Simulation Result (10,000 paths):")

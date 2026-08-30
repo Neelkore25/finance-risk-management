@@ -110,6 +110,10 @@ def predict_credit_risk(params):
     }
 
 
+# Backward-compatible alias
+train_and_predict_credit_risk = predict_credit_risk
+
+
 if __name__ == '__main__':
     sample_applicant = {
         "income": 6000,

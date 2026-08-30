@@ -100,6 +100,10 @@ def compute_personal_risk_score(profile_dict, expenses_list=None, debts_list=Non
     }
 
 
+# Backward-compatible alias
+compute_personal_risk_assessment = compute_personal_risk_score
+
+
 if __name__ == '__main__':
     prof = {"monthly_income": 5000, "monthly_essential_expenses": 2000, "monthly_discretionary_expenses": 800, "existing_savings": 10000, "emergency_fund": 6000, "monthly_debt_payment": 400}
     res = compute_personal_risk_score(prof)
