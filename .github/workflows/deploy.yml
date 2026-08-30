@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -29,12 +30,14 @@ jobs:
           npm ci
 
       - name: Build React Client with Production Variables
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://pxxqrrnpbpldyslseegy.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable__T31MM88-paDjC7ejcFWlw_cejGuMls' }}
-          VITE_ANALYTICS_API_URL: ${{ secrets.VITE_ANALYTICS_API_URL || 'https://finance-risk-analytics-python.up.railway.app' }}
         run: |
           cd client
+          export VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}"
+          if [ -z "$VITE_SUPABASE_URL" ]; then export VITE_SUPABASE_URL="https://pxxqrrnpbpldyslseegy.supabase.co"; fi
+          export VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+          if [ -z "$VITE_SUPABASE_ANON_KEY" ]; then export VITE_SUPABASE_ANON_KEY="sb_publishable__T31MM88-paDjC7ejcFWlw_cejGuMls"; fi
+          export VITE_ANALYTICS_API_URL="${{ secrets.VITE_ANALYTICS_API_URL }}"
+          if [ -z "$VITE_ANALYTICS_API_URL" ]; then export VITE_ANALYTICS_API_URL="https://finance-risk-analytics-python.up.railway.app"; fi
           npm run build
 
       - name: Deploy to GitHub Pages
@@ -42,3 +45,4 @@ jobs:
         with:
           folder: client/dist
           branch: gh-pages
+          token: ${{ secrets.GITHUB_TOKEN }}
