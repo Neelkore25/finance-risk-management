@@ -32,7 +32,11 @@ export function Profile() {
     }
     loadProfile();
     window.addEventListener('profileUpdated', loadProfile);
-    return () => window.removeEventListener('profileUpdated', loadProfile);
+    window.addEventListener('settingsUpdated', loadProfile);
+    return () => {
+      window.removeEventListener('profileUpdated', loadProfile);
+      window.removeEventListener('settingsUpdated', loadProfile);
+    };
   }, []);
 
   const handleChange = (field, val) => {

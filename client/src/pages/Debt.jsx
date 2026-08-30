@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, getSavedSettings, formatCurrency } from '../services/apiClient';
 import { OpaqueModal } from '../components/OpaqueModal';
 import { CreditCard, Plus, Trash2, Edit2, AlertTriangle, ShieldCheck } from 'lucide-react';
 
@@ -10,6 +10,7 @@ export function Debt() {
   const [profile, setProfile] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingDebt, setEditingDebt] = useState(null);
+  const [settings, setSettings] = useState(getSavedSettings);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -24,8 +25,13 @@ export function Debt() {
 
   useEffect(() => {
     loadData();
+    const handleSettingsUpdated = () => setSettings(getSavedSettings());
     window.addEventListener('debtUpdated', loadData);
-    return () => window.removeEventListener('debtUpdated', loadData);
+    window.addEventListener('settingsUpdated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('debtUpdated', loadData);
+      window.removeEventListener('settingsUpdated', handleSettingsUpdated);
+    };
   }, []);
 
   async function loadData() {
@@ -129,29 +135,29 @@ export function Debt() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="opaque-card p-6 space-y-1">
           <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Total Outstanding Debt</span>
-          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">₹{totalOutstanding.toLocaleString('en-IN')}</span>
+          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{formatCurrency(totalOutstanding)}</span>
           <span className="text-[11px] text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800">Total liability balance</span>
         </div>
         <div className="opaque-card p-6 space-y-1">
           <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Total Monthly EMI Payment</span>
-          <span className="text-3xl font-extrabold text-rose-600 dark:text-rose-400 font-mono tabular-nums">₹{totalMonthlyPayment.toLocaleString('en-IN')}<span className="text-xs font-normal text-slate-400">/mo</span></span>
+          <span className="text-3xl font-extrabold text-rose-600 dark:text-rose-400 font-mono tabular-nums">{formatCurrency(totalMonthlyPayment)}<span className="text-xs font-normal text-slate-400">/mo</span></span>
           <span className="text-[11px] text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800">Total monthly debt service</span>
         </div>
         <div className="opaque-card p-6 space-y-1 border-l-4 border-l-[#2563EB] dark:border-l-[#0EA5E9]">
           <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Debt-to-Income (DTI)</span>
           <span className="text-5xl sm:text-6xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{dti.toFixed(1)}%</span>
           <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
-            💡 <strong>Percentage of income going to debt payments</strong> (Target: &le;36%).
+            💡 <strong>Percentage of income going to debt payments</strong> (Target: &le;{settings.dtiLimit || 36}%).
           </span>
         </div>
       </div>
 
-      {dti > 36 && (
+      {dti > (settings.dtiLimit || 36) && (
         <div className="p-4 rounded-xl bg-rose-950 border border-rose-800 text-rose-200 text-xs flex items-center gap-3 opacity-100">
           <AlertTriangle className="w-5 h-5 shrink-0 text-rose-400" />
           <div>
             <span className="font-extrabold block text-sm">HIGH DEBT BURDEN WARNING</span>
-            <span>Your calculated DTI ratio is {dti.toFixed(1)}%, exceeding the recommended standard limit of 36%. Consider aggressive debt payoff.</span>
+            <span>Your calculated DTI ratio is {dti.toFixed(1)}%, exceeding your configured target limit of {settings.dtiLimit || 36}%. Consider aggressive debt payoff.</span>
           </div>
         </div>
       )}

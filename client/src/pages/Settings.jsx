@@ -55,7 +55,17 @@ export function Settings() {
   const handleForceReSync = () => {
     try {
       localStorage.removeItem('riskguard_users_db');
+      localStorage.removeItem('riskguard_local_profile');
+      localStorage.removeItem('riskguard_local_expenses');
+      localStorage.removeItem('riskguard_local_debts');
+      localStorage.removeItem('riskguard_local_holdings');
+      localStorage.removeItem('riskguard_local_goals');
       window.dispatchEvent(new CustomEvent('profileUpdated'));
+      window.dispatchEvent(new CustomEvent('expensesUpdated'));
+      window.dispatchEvent(new CustomEvent('debtUpdated'));
+      window.dispatchEvent(new CustomEvent('portfolioUpdated'));
+      window.dispatchEvent(new CustomEvent('goalsUpdated'));
+      window.dispatchEvent(new CustomEvent('settingsUpdated'));
       setToastType('ok');
       setToastMsg('Supabase state re-synchronized cleanly.');
       setTimeout(() => setToastMsg(''), 3000);

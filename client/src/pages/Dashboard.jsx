@@ -48,32 +48,79 @@ export function Dashboard() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(true);
+  const [settings, setSettings] = useState(getSavedSettings);
+
+  async function loadDashboardData() {
+    try {
+      const activeSettings = getSavedSettings();
+      setSettings(activeSettings);
+
+      const [pRiskRes, portRiskRes, credRiskRes, alertRes, histRes] = await Promise.all([
+        apiFetch('/risk/personal'),
+        apiFetch(`/risk/portfolio?confidence=${(activeSettings.varConfidence || 95) / 100}`),
+        apiFetch('/risk/credit'),
+        apiFetch('/alerts'),
+        apiFetch('/risk/history')
+      ]);
+
+      setPersonalRisk(pRiskRes.assessment);
+      setPortfolioRisk(portRiskRes.portfolioRisk);
+      setCreditRisk(credRiskRes.creditRisk);
+      setHistory(histRes.history || []);
+
+      // Build dynamic alerts matching settings toggle flags
+      const rawMetrics = pRiskRes.assessment?.metrics || {};
+      const generatedAlerts = [];
+
+      if (activeSettings.alertDtiBreach !== false && rawMetrics.dtiRatio > (activeSettings.dtiLimit || 36)) {
+        generatedAlerts.push({
+          id: 'alt_dti',
+          severity: 'Critical',
+          title: 'High Debt-to-Income (DTI) Breach',
+          message: `Your DTI ratio is ${rawMetrics.dtiRatio}%, exceeding your target limit of ${activeSettings.dtiLimit || 36}%.`
+        });
+      }
+
+      if (activeSettings.alertLowReserves !== false && rawMetrics.emergencyCoverageMonths < (activeSettings.emergencyTargetMonths || 6)) {
+        generatedAlerts.push({
+          id: 'alt_res',
+          severity: 'Warning',
+          title: 'Liquid Reserve Target Deficit',
+          message: `Emergency reserve covers ${rawMetrics.emergencyCoverageMonths} months, below your target threshold of ${activeSettings.emergencyTargetMonths || 6} months.`
+        });
+      }
+
+      if (activeSettings.alertVarVolatility !== false && (portRiskRes.portfolioRisk?.metrics?.historicalVaR1DayPct > 2.0)) {
+        generatedAlerts.push({
+          id: 'alt_var',
+          severity: 'Info',
+          title: 'Portfolio Daily Volatility Alert',
+          message: `1-Day Historical VaR is ${portRiskRes.portfolioRisk?.metrics?.historicalVaR1DayPct}%, indicating market tail risk.`
+        });
+      }
+
+      setAlerts(generatedAlerts);
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function loadDashboardData() {
-      try {
-        const [pRiskRes, portRiskRes, credRiskRes, alertRes, histRes] = await Promise.all([
-          apiFetch('/risk/personal'),
-          apiFetch('/risk/portfolio'),
-          apiFetch('/risk/credit'),
-          apiFetch('/alerts'),
-          apiFetch('/risk/history')
-        ]);
-
-        setPersonalRisk(pRiskRes.assessment);
-        setPortfolioRisk(portRiskRes.portfolioRisk);
-        setCreditRisk(credRiskRes.creditRisk);
-        setAlerts(alertRes.alerts || []);
-        setHistory(histRes.history || []);
-      } catch (err) {
-        console.error('Failed to load dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
     loadDashboardData();
     window.addEventListener('profileUpdated', loadDashboardData);
-    return () => window.removeEventListener('profileUpdated', loadDashboardData);
+    window.addEventListener('expensesUpdated', loadDashboardData);
+    window.addEventListener('debtUpdated', loadDashboardData);
+    window.addEventListener('portfolioUpdated', loadDashboardData);
+    window.addEventListener('settingsUpdated', loadDashboardData);
+    return () => {
+      window.removeEventListener('profileUpdated', loadDashboardData);
+      window.removeEventListener('expensesUpdated', loadDashboardData);
+      window.removeEventListener('debtUpdated', loadDashboardData);
+      window.removeEventListener('portfolioUpdated', loadDashboardData);
+      window.removeEventListener('settingsUpdated', loadDashboardData);
+    };
   }, []);
 
   if (loading) {
@@ -194,7 +241,7 @@ export function Dashboard() {
               <span className="text-[11px] text-[#475569] dark:text-[#9CA3AF] font-bold block uppercase tracking-wider">Monthly Cash Flow</span>
               <span className={`text-2xl font-extrabold flex items-center gap-1 font-mono tabular-nums ${metrics?.netCashFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {metrics?.netCashFlow >= 0 ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
-                ₹{Math.abs(metrics?.netCashFlow || 0).toLocaleString('en-IN')}
+                {formatCurrency(Math.abs(metrics?.netCashFlow || 0))}
               </span>
               <span className="text-[10px] text-slate-400 block mt-1">Surplus monthly income</span>
             </div>
@@ -243,7 +290,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="opaque-card p-6 space-y-1">
           <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Monthly Net Income</span>
-          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">₹{metrics?.monthlyIncome?.toLocaleString('en-IN')}</span>
+          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{formatCurrency(metrics?.monthlyIncome)}</span>
           <span className="text-xs text-emerald-600 dark:text-emerald-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-bold">
             Savings Rate: {metrics?.savingsRate}%
           </span>
@@ -251,9 +298,9 @@ export function Dashboard() {
 
         <div className="opaque-card p-6 space-y-1">
           <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Total Monthly Expenses</span>
-          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">₹{metrics?.totalMonthlyExpenses?.toLocaleString('en-IN')}</span>
+          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{formatCurrency(metrics?.totalMonthlyExpenses)}</span>
           <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
-            Essential: ₹{metrics?.essentialExp?.toLocaleString('en-IN')}
+            Essential: {formatCurrency(metrics?.essentialExp)}
           </span>
         </div>
 
@@ -261,7 +308,7 @@ export function Dashboard() {
           <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Debt-to-Income (DTI)</span>
           <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{metrics?.dtiRatio}%</span>
           <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
-            💡 <strong>Percentage of income going to debt payments</strong> (Target: &le;36%).
+            💡 <strong>Percentage of income going to debt payments</strong> (Target: &le;{settings.dtiLimit || 36}%).
           </span>
         </div>
 
@@ -269,7 +316,7 @@ export function Dashboard() {
           <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Liquid Savings Buffer</span>
           <span className="text-3xl font-extrabold text-[#2563EB] dark:text-[#0EA5E9] font-mono tabular-nums">{metrics?.liquidCoverageMonths} Mos</span>
           <span className="text-xs text-slate-500 dark:text-slate-400 block pt-1 border-t border-slate-200 dark:border-slate-800 font-medium">
-            Savings: ₹{metrics?.existingSavings?.toLocaleString('en-IN')}
+            Savings: {formatCurrency(metrics?.existingSavings)}
           </span>
         </div>
       </div>

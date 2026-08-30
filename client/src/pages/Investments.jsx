@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, formatCurrency } from '../services/apiClient';
 import { OpaqueModal } from '../components/OpaqueModal';
 import { TrendingUp, Plus, Trash2, Edit2, PieChart, Layers } from 'lucide-react';
 import { ResponsiveContainer, PieChart as RePie, Pie, Cell, Tooltip } from 'recharts';
@@ -27,7 +27,11 @@ export function Investments() {
   useEffect(() => {
     loadInvestments();
     window.addEventListener('portfolioUpdated', loadInvestments);
-    return () => window.removeEventListener('portfolioUpdated', loadInvestments);
+    window.addEventListener('settingsUpdated', loadInvestments);
+    return () => {
+      window.removeEventListener('portfolioUpdated', loadInvestments);
+      window.removeEventListener('settingsUpdated', loadInvestments);
+    };
   }, []);
 
   async function loadInvestments() {
@@ -227,7 +231,7 @@ export function Investments() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="opaque-card">
           <span className="text-xs font-semibold text-slate-500 block mb-1">Total Portfolio Value</span>
-          <span className="text-xl font-extrabold text-slate-900 dark:text-white">${totalValue.toLocaleString()}</span>
+          <span className="text-xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums">{formatCurrency(totalValue)}</span>
         </div>
         <div className="opaque-card">
           <span className="text-xs font-semibold text-slate-500 block mb-1">Total Asset Count</span>
@@ -274,8 +278,8 @@ export function Investments() {
                         </td>
                         <td className="p-3 text-slate-500">{inv.sector}</td>
                         <td className="p-3 text-right">{inv.quantity}</td>
-                        <td className="p-3 text-right">${Number(inv.current_price).toLocaleString()}</td>
-                        <td className="p-3 text-right font-bold text-slate-900 dark:text-white">${Number(inv.amount_value).toLocaleString()}</td>
+                        <td className="p-3 text-right font-mono tabular-nums">{formatCurrency(inv.current_price)}</td>
+                        <td className="p-3 text-right font-bold text-slate-900 dark:text-white font-mono tabular-nums">{formatCurrency(inv.amount_value)}</td>
                         <td className="p-3 text-right font-semibold text-sky-500">{weight.toFixed(1)}%</td>
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-2">

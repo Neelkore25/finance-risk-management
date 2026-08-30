@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, getSavedSettings, formatCurrency } from '../services/apiClient';
 import { PieChart, ShieldAlert, Info, TrendingUp, AlertTriangle, Layers } from 'lucide-react';
 
 export function PortfolioRisk() {
   const [portfolioRisk, setPortfolioRisk] = useState(null);
-  const [confidence, setConfidence] = useState(0.95);
+  const [confidence, setConfidence] = useState(() => (getSavedSettings().varConfidence || 95) / 100);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadPortfolioRisk();
   }, [confidence]);
+
+  useEffect(() => {
+    const handleSettingsUpdated = (e) => {
+      const updated = e.detail || getSavedSettings();
+      if (updated.varConfidence) {
+        setConfidence(updated.varConfidence / 100);
+      }
+    };
+    window.addEventListener('settingsUpdated', handleSettingsUpdated);
+    return () => window.removeEventListener('settingsUpdated', handleSettingsUpdated);
+  }, []);
 
   async function loadPortfolioRisk() {
     setLoading(true);

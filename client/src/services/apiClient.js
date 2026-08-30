@@ -1,21 +1,62 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 /**
- * Format currency in Indian Rupees (₹)
+ * Read persisted platform settings from localStorage with defaults
  */
-export function formatINR(amount) {
-  const num = Number(amount || 0);
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0
-  }).format(num);
+export function getSavedSettings() {
+  try {
+    const saved = localStorage.getItem('risk_platform_settings');
+    if (saved) return JSON.parse(saved);
+  } catch (e) {}
+  return {
+    dtiLimit: 36,
+    varConfidence: 95,
+    emergencyTargetMonths: 6,
+    baseCurrency: 'INR',
+    numberFormat: 'LAKHS',
+    alertDtiBreach: true,
+    alertLowReserves: true,
+    alertVarVolatility: true
+  };
 }
 
 /**
- * Deterministic Personal Risk Calculator Engine (INR ₹)
+ * Format currency based on active user settings (INR vs USD, Lakhs vs Thousands)
+ */
+export function formatCurrency(amount) {
+  const settings = getSavedSettings();
+  const num = Number(amount || 0);
+  if (settings.baseCurrency === 'USD') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0
+    }).format(num);
+  } else {
+    const locale = settings.numberFormat === 'THOUSANDS' ? 'en-US' : 'en-IN';
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(num);
+  }
+}
+
+/**
+ * Format currency in active settings currency (INR/USD)
+ */
+export function formatINR(amount) {
+  return formatCurrency(amount);
+}
+
+/**
+ * Deterministic Personal Risk Calculator Engine
  */
 export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [], investments = [], goals = []) {
+  const settings = getSavedSettings();
+  const dtiTarget = settings.dtiLimit || 36;
+  const emergencyTarget = settings.emergencyTargetMonths || 6;
+
   const monthlyIncome = Number(profile?.monthly_net_income || 0);
   const essentialExp = Number(profile?.essential_expenses || 0);
   const discretionaryExp = Number(profile?.discretionary_expenses || 0);
@@ -31,10 +72,10 @@ export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [],
   const emergencyCoverageMonths = essentialExp > 0 ? Number((emergencyFund / essentialExp).toFixed(1)) : 0;
   const liquidCoverageMonths = totalMonthlyExpenses > 0 ? Number((existingSavings / totalMonthlyExpenses).toFixed(1)) : 0;
 
-  // Category Risk Scores (0-100 scale, higher means higher risk)
-  const debtScore = Math.min(100, Math.round(dtiRatio * 2.2));
+  // Category Risk Scores (0-100 scale, dynamically scaled by settings thresholds)
+  const debtScore = Math.min(100, Math.round((dtiRatio / dtiTarget) * 50));
   const cashFlowScore = netCashFlow < 0 ? 90 : Math.max(0, 100 - savingsRate * 2);
-  const emergencyScore = emergencyCoverageMonths < 3 ? 85 : emergencyCoverageMonths < 6 ? 40 : 15;
+  const emergencyScore = emergencyCoverageMonths < (emergencyTarget / 2) ? 85 : emergencyCoverageMonths < emergencyTarget ? 40 : 15;
   const liquidityScore = liquidCoverageMonths < 2 ? 80 : 20;
 
   const totalPortfolioValue = investments.reduce((sum, inv) => sum + Number(inv.current_price * inv.quantity || 0), 0);
@@ -368,12 +409,14 @@ export async function apiFetch(endpoint, options = {}) {
       if (data && data.length > 0) invs = data;
     }
 
-    // Read confidence level from endpoint URL (default 0.95)
-    let conf = 0.95;
+    // Read confidence level from endpoint URL or fall back to platform settings
+    const settings = getSavedSettings();
+    let conf = (settings.varConfidence || 95) / 100;
     if (endpoint.includes('confidence=0.99')) conf = 0.99;
+    else if (endpoint.includes('confidence=0.95')) conf = 0.95;
     else if (endpoint.includes('confidence=')) {
       const parsedConf = parseFloat(endpoint.split('confidence=')[1]);
-      if (!isNaN(parsedConf)) conf = parsedConf;
+      if (!isNaN(parsedConf)) conf = parsedConf > 1 ? parsedConf / 100 : parsedConf;
     }
 
     const totalVal = invs.reduce((sum, i) => sum + (Number(i.amount_value) || (Number(i.quantity) * Number(i.current_price))), 0) || 250000;

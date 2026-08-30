@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, formatCurrency } from '../services/apiClient';
 import { OpaqueModal } from '../components/OpaqueModal';
 import { Receipt, Plus, Trash2, Edit2, Filter, DollarSign, CheckCircle2 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
@@ -26,7 +26,11 @@ export function Expenses() {
   useEffect(() => {
     loadExpenses();
     window.addEventListener('expensesUpdated', loadExpenses);
-    return () => window.removeEventListener('expensesUpdated', loadExpenses);
+    window.addEventListener('settingsUpdated', loadExpenses);
+    return () => {
+      window.removeEventListener('expensesUpdated', loadExpenses);
+      window.removeEventListener('settingsUpdated', loadExpenses);
+    };
   }, []);
 
   async function loadExpenses() {
@@ -133,18 +137,18 @@ export function Expenses() {
       </div>
 
       {/* Metrics Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Total Expenses</span>
-          <span className="text-xl font-extrabold text-slate-900 dark:text-white">${totalAmount.toLocaleString()}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="opaque-card p-6 space-y-1">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Total Expenses</span>
+          <span className="text-3xl font-extrabold text-[#0F172A] dark:text-white font-mono tabular-nums">{formatCurrency(totalAmount)}</span>
         </div>
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Essential Spending</span>
-          <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">${essentialAmount.toLocaleString()}</span>
+        <div className="opaque-card p-6 space-y-1">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Essential Spending</span>
+          <span className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">{formatCurrency(essentialAmount)}</span>
         </div>
-        <div className="opaque-card">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">Discretionary Spending</span>
-          <span className="text-xl font-extrabold text-amber-600 dark:text-amber-400">${discretionaryAmount.toLocaleString()}</span>
+        <div className="opaque-card p-6 space-y-1">
+          <span className="text-xs font-bold text-[#475569] dark:text-[#9CA3AF] block uppercase tracking-wider">Discretionary Spending</span>
+          <span className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 font-mono tabular-nums">{formatCurrency(discretionaryAmount)}</span>
         </div>
       </div>
 
@@ -195,7 +199,7 @@ export function Expenses() {
                         </span>
                       </td>
                       <td className="p-3 text-slate-500">{exp.date}</td>
-                      <td className="p-3 text-right font-bold text-slate-900 dark:text-white">${Number(exp.amount).toLocaleString()}</td>
+                      <td className="p-3 text-right font-bold text-slate-900 dark:text-white font-mono tabular-nums">{formatCurrency(exp.amount)}</td>
                       <td className="p-3 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button onClick={() => handleOpenModal(exp)} className="p-1 text-slate-400 hover:text-sky-500">
