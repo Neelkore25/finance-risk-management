@@ -100,7 +100,7 @@ export function Dashboard() {
     );
   }
 
-  const { overallScore, overallLevel, metrics, categories } = personalRisk || {};
+  const { overallScore, overallLevel, metrics, categories, overallSummary } = personalRisk || {};
 
   // Real Risk Category Breakdown for Donut Chart
   const categoryLabels = {
