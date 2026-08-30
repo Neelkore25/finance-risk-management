@@ -134,15 +134,40 @@ export function Investments() {
           return;
         }
 
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z0-9_]/g, ''));
+        function parseCsvLine(lineText) {
+          const result = [];
+          let cur = '';
+          let inQuotes = false;
+          for (let i = 0; i < lineText.length; i++) {
+            const char = lineText[i];
+            const nextChar = lineText[i + 1];
+            if (char === '"' || char === "'") {
+              if (inQuotes && nextChar === char) {
+                cur += char;
+                i++;
+              } else {
+                inQuotes = !inQuotes;
+              }
+            } else if (char === ',' && !inQuotes) {
+              result.push(cur.trim().replace(/^["']|["']$/g, ''));
+              cur = '';
+            } else {
+              cur += char;
+            }
+          }
+          result.push(cur.trim().replace(/^["']|["']$/g, ''));
+          return result;
+        }
+
+        const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9_]/g, ''));
         const dataRows = lines.slice(1);
         
         let successCount = 0;
         const parsedHoldings = [];
 
         for (const rowStr of dataRows) {
-          const cols = rowStr.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
-          if (cols.length < 2) continue;
+          const cols = parseCsvLine(rowStr);
+          if (cols.length < 2 || cols.every(c => c === '')) continue;
 
           const rowObj = {};
           headers.forEach((h, idx) => {

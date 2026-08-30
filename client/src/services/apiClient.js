@@ -2,6 +2,25 @@ import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 /**
+ * Assumed Long-Term Baseline Expected Returns by Asset Class (used for Sharpe Ratio & Modeling)
+ * NOTE: These are educational/modeled baseline return assumptions, not live market data.
+ */
+export const ASSET_CLASS_EXPECTED_RETURNS = {
+  crypto: 0.18,      // 18.0% annual expected return (Digital Assets)
+  equity: 0.12,      // 12.0% annual expected return (Equities, Stocks, Index Funds)
+  real_estate: 0.09, // 9.0% annual expected return (Real Estate, Gold, Commodities)
+  bonds: 0.06,       // 6.0% annual expected return (Fixed Income, Sovereign Debt, Bonds)
+  cash: 0.05,        // 5.0% annual expected return (Liquid Savings, Bank FDs, Money Market)
+  other: 0.08        // 8.0% annual expected return (General Portfolio Default)
+};
+
+/**
+ * Assumed Sovereign Risk-Free Rate
+ * Approximates 10-Year Indian Government Securities (G-Sec) baseline yield (~5.5%)
+ */
+export const RISK_FREE_RATE = 0.055;
+
+/**
  * Read persisted platform settings from localStorage with defaults
  */
 export function getSavedSettings() {
@@ -442,23 +461,43 @@ export async function apiFetch(endpoint, options = {}) {
 
     const totalVal = invs.reduce((sum, i) => sum + (Number(i.amount_value) || (Number(i.quantity) * Number(i.current_price))), 0) || 250000;
 
-    // Calculate asset volatility weighted by portfolio composition
+    // Calculate asset volatility and expected return weighted by portfolio composition
     let weightedVol = 0.14; // Base 14% annual vol
+    let expectedReturn = ASSET_CLASS_EXPECTED_RETURNS.equity; // Base 12% annual return
     let equityRatio = 0.6;
     let cryptoRatio = 0.0;
 
     if (invs.length > 0 && totalVal > 0) {
       let equityVal = 0;
       let cryptoVal = 0;
+      let totalWeightedReturn = 0;
+
       invs.forEach(inv => {
         const val = Number(inv.amount_value) || (Number(inv.quantity) * Number(inv.current_price));
         const type = (inv.asset_type || '').toLowerCase();
-        if (type.includes('crypto')) cryptoVal += val;
-        else if (type.includes('stock') || type.includes('equity') || type.includes('mutual')) equityVal += val;
+        
+        let expRet = ASSET_CLASS_EXPECTED_RETURNS.other;
+        if (type.includes('crypto')) {
+          cryptoVal += val;
+          expRet = ASSET_CLASS_EXPECTED_RETURNS.crypto;
+        } else if (type.includes('stock') || type.includes('equity') || type.includes('mutual')) {
+          equityVal += val;
+          expRet = ASSET_CLASS_EXPECTED_RETURNS.equity;
+        } else if (type.includes('bond') || type.includes('fixed') || type.includes('debt') || type.includes('g-sec')) {
+          expRet = ASSET_CLASS_EXPECTED_RETURNS.bonds;
+        } else if (type.includes('cash') || type.includes('liquid') || type.includes('deposit') || type.includes('fd')) {
+          expRet = ASSET_CLASS_EXPECTED_RETURNS.cash;
+        } else if (type.includes('gold') || type.includes('real estate') || type.includes('property')) {
+          expRet = ASSET_CLASS_EXPECTED_RETURNS.real_estate;
+        }
+
+        totalWeightedReturn += (val / totalVal) * expRet;
       });
+
       equityRatio = equityVal / totalVal;
       cryptoRatio = cryptoVal / totalVal;
       weightedVol = Math.max(0.04, 0.08 + (equityRatio * 0.12) + (cryptoRatio * 0.45));
+      expectedReturn = totalWeightedReturn;
     }
 
     // Daily volatility
@@ -475,7 +514,8 @@ export async function apiFetch(endpoint, options = {}) {
     const cvarPct = Number((histVaRPct * cvarMultiplier).toFixed(2));
     const cvarAmt = Math.round(totalVal * (cvarPct / 100));
 
-    const sharpe = Number(((weightedVol * 0.8) / weightedVol).toFixed(2));
+    // Real Sharpe Ratio: (Rp - Rf) / sigma_p
+    const sharpe = weightedVol > 0 ? Number(((expectedReturn - RISK_FREE_RATE) / weightedVol).toFixed(2)) : 0.0;
     const beta = Number((0.9 + (equityRatio * 0.4) + (cryptoRatio * 0.8)).toFixed(2));
     const annVol = Number((weightedVol * 100).toFixed(1));
     const maxDdPct = Number((weightedVol * 65).toFixed(1));
@@ -661,11 +701,75 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   if (cleanEp === '/alerts') {
-    return {
-      alerts: [
-        { id: '1', title: 'Debt-to-Income Stable', message: 'DTI is currently within safe target parameters.', type: 'info', timestamp: 'Just now' }
-      ]
-    };
+    const activeSettings = getSavedSettings();
+    let prof = { monthly_net_income: 75000, monthly_debt_payments: 12000, essential_expenses: 30000, discretionary_expenses: 15000, liquid_savings: 100000, emergency_fund: 180000 };
+    if (userId && isSupabaseConfigured()) {
+      const { data } = await supabase.from('financial_profiles').select('*').eq('user_id', userId).maybeSingle();
+      if (data) prof = data;
+    } else {
+      const cached = localStorage.getItem('riskguard_local_profile');
+      if (cached) {
+        try { prof = JSON.parse(cached); } catch (err) {}
+      }
+    }
+
+    const income = Number(prof.monthly_net_income || 0);
+    const debt = Number(prof.monthly_debt_payments || 0);
+    const essential = Number(prof.essential_expenses || 0);
+    const emergencyFund = Number(prof.emergency_fund || prof.liquid_savings || 0);
+
+    const dtiRatio = income > 0 ? Number(((debt / income) * 100).toFixed(1)) : 0;
+    const emergencyCoverageMonths = essential > 0 ? Number((emergencyFund / essential).toFixed(1)) : 0;
+
+    const generatedAlerts = [];
+
+    // Alert 1: DTI Breach (Gated by settings.alertDtiBreach)
+    const targetDti = activeSettings.dtiLimit || 36;
+    if (activeSettings.alertDtiBreach !== false && dtiRatio > targetDti) {
+      generatedAlerts.push({
+        id: 'alt_dti',
+        title: 'High Debt-to-Income (DTI) Breach',
+        message: `Your DTI ratio is ${dtiRatio}%, exceeding your target limit of ${targetDti}%.`,
+        severity: 'Critical',
+        type: 'danger',
+        timestamp: 'Active'
+      });
+    }
+
+    // Alert 2: Low Emergency Reserves (Gated by settings.alertLowReserves)
+    const targetEmergency = activeSettings.emergencyTargetMonths || 6;
+    if (activeSettings.alertLowReserves !== false && emergencyCoverageMonths < targetEmergency) {
+      generatedAlerts.push({
+        id: 'alt_res',
+        title: 'Liquid Reserve Target Deficit',
+        message: `Emergency reserve covers ${emergencyCoverageMonths} months, below your target threshold of ${targetEmergency} months.`,
+        severity: 'Warning',
+        type: 'warning',
+        timestamp: 'Active'
+      });
+    }
+
+    // Alert 3: Portfolio Volatility (Gated by settings.alertVarVolatility)
+    if (activeSettings.alertVarVolatility !== false) {
+      let invs = [];
+      if (userId && isSupabaseConfigured()) {
+        const { data } = await supabase.from('portfolio_holdings').select('*');
+        if (data) invs = data;
+      }
+      const hasCrypto = invs.some(i => (i.asset_type || '').toLowerCase().includes('crypto'));
+      if (hasCrypto) {
+        generatedAlerts.push({
+          id: 'alt_var',
+          title: 'High Asset Volatility Exposure',
+          message: 'Portfolio includes digital assets (crypto) increasing daily downside tail risk.',
+          severity: 'Info',
+          type: 'info',
+          timestamp: 'Active'
+        });
+      }
+    }
+
+    return { alerts: generatedAlerts };
   }
 
   if (cleanEp === '/risk/history') {
@@ -678,63 +782,180 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   if (cleanEp === '/simulator/what-if') {
-    const incPct = body?.incomeChangePct || 0;
-    const expPct = body?.expenseChangePct || 0;
-    const addDebt = body?.additionalDebt || 0;
-
-    let prof = { monthly_net_income: 75000, monthly_debt_payments: 12000, essential_expenses: 30000, discretionary_expenses: 15000, liquid_savings: 100000, emergency_fund: 180000 };
-    const cached = localStorage.getItem('riskguard_local_profile');
-    if (cached) {
+    let requestBody = {};
+    if (options && options.body) {
       try {
-        prof = JSON.parse(cached);
+        requestBody = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
       } catch (err) {}
     }
 
-    const baseInc = Number(prof.monthly_net_income || 75000);
-    const baseExp = Number(prof.essential_expenses || 30000) + Number(prof.discretionary_expenses || 15000);
-    const baseDebt = Number(prof.monthly_debt_payments || 12000);
+    const incPct = Number(requestBody.incomeChangePct || 0);
+    const expPct = Number(requestBody.expenseChangePct || 0);
+    const addDebt = Number(requestBody.additionalDebt || 0);
+    const addSavings = Number(requestBody.additionalSavings || 0);
+    const emgSavingsChange = Number(requestBody.emergencySavingsChange || 0);
 
-    const simInc = baseInc * (1 + incPct / 100);
-    const simExp = baseExp * (1 + expPct / 100);
-    const simDebt = baseDebt + addDebt;
+    let prof = { monthly_net_income: 75000, monthly_debt_payments: 12000, essential_expenses: 30000, discretionary_expenses: 15000, liquid_savings: 100000, emergency_fund: 180000 };
+    let exps = [], dts = [], invs = [], gls = [];
 
-    const baseDti = baseInc > 0 ? Math.round((baseDebt / baseInc) * 100) : 0;
-    const simDti = simInc > 0 ? Math.round((simDebt / simInc) * 100) : 0;
+    if (userId && isSupabaseConfigured()) {
+      const [pRes, eRes, dRes, iRes, gRes] = await Promise.all([
+        supabase.from('financial_profiles').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('expenses').select('*'),
+        supabase.from('debts').select('*'),
+        supabase.from('portfolio_holdings').select('*'),
+        supabase.from('financial_goals').select('*')
+      ]);
+      if (pRes.data) prof = pRes.data;
+      if (eRes.data) exps = eRes.data;
+      if (dRes.data) dts = dRes.data;
+      if (iRes.data) invs = iRes.data;
+      if (gRes.data) gls = gRes.data;
+    } else {
+      const cached = localStorage.getItem('riskguard_local_profile');
+      if (cached) {
+        try { prof = JSON.parse(cached); } catch (err) {}
+      }
+    }
 
-    const baseScore = Math.min(100, Math.round(baseDti * 2.2));
-    const simScore = Math.min(100, Math.round(simDti * 2.2));
+    // Real Baseline Multi-Factor Risk Assessment
+    const baselineAssessment = calculatePersonalRiskMetrics(prof, exps, dts, invs, gls);
 
-    let baseLevel = 'Low Risk';
-    if (baseScore >= 60) baseLevel = 'High Risk';
-    else if (baseScore >= 35) baseLevel = 'Moderate Risk';
+    // Real Simulated Profile
+    const baseInc = Number(prof.monthly_net_income || 0);
+    const baseEss = Number(prof.essential_expenses || 0);
+    const baseDisc = Number(prof.discretionary_expenses || 0);
+    const baseDebt = Number(prof.monthly_debt_payments || 0);
+    const baseSav = Number(prof.liquid_savings || 0);
+    const baseEmg = Number(prof.emergency_fund || 0);
 
-    let simLevel = 'Low Risk';
-    if (simScore >= 60) simLevel = 'High Risk';
-    else if (simScore >= 35) simLevel = 'Moderate Risk';
+    const simProf = {
+      ...prof,
+      monthly_net_income: Math.max(0, Math.round(baseInc * (1 + incPct / 100))),
+      essential_expenses: Math.max(0, Math.round(baseEss * (1 + expPct / 100))),
+      discretionary_expenses: Math.max(0, Math.round(baseDisc * (1 + expPct / 100))),
+      monthly_debt_payments: Math.max(0, Math.round(baseDebt + addDebt)),
+      liquid_savings: Math.max(0, Math.round(baseSav + addSavings)),
+      emergency_fund: Math.max(0, Math.round(baseEmg + emgSavingsChange))
+    };
+
+    const simulatedAssessment = calculatePersonalRiskMetrics(simProf, exps, dts, invs, gls);
 
     return {
-      baselineScore: baseScore,
-      baselineLevel: baseLevel,
-      simulatedScore: simScore,
-      simulatedLevel: simLevel,
-      scoreDelta: simScore - baseScore,
-      baselineCategories: {
-        debtRisk: { score: baseScore, level: baseLevel }
-      },
-      simulatedCategories: {
-        debtRisk: { score: simScore, level: simLevel }
-      }
+      baselineScore: baselineAssessment.overallScore,
+      baselineLevel: baselineAssessment.overallLevel,
+      simulatedScore: simulatedAssessment.overallScore,
+      simulatedLevel: simulatedAssessment.overallLevel,
+      scoreDelta: simulatedAssessment.overallScore - baselineAssessment.overallScore,
+      baselineCategories: baselineAssessment.categories,
+      simulatedCategories: simulatedAssessment.categories,
+      baselineMetrics: baselineAssessment.metrics,
+      simulatedMetrics: simulatedAssessment.metrics
     };
   }
 
   if (cleanEp === '/risk/monte-carlo') {
+    let requestBody = {};
+    if (options && options.body) {
+      try {
+        requestBody = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+      } catch (err) {}
+    }
+
+    const numSimulations = Math.min(5000, Math.max(100, Number(requestBody.numSimulations || 1000)));
+    const horizonMonths = Math.min(120, Math.max(1, Number(requestBody.horizonMonths || 12)));
+    const initialValue = Math.max(100, Number(requestBody.initialValue || 25000));
+    const monthlyContribution = Math.max(0, Number(requestBody.monthlyContribution || 500));
+
+    // Pure Client-Side JavaScript Stochastic Geometric Brownian Motion (GBM) Engine
+    const annualMu = 0.10;
+    const annualSigma = 0.16;
+
+    const dt = 1 / 12;
+    const monthlyDrift = (annualMu - 0.5 * Math.pow(annualSigma, 2)) * dt;
+    const monthlyVol = annualSigma * Math.sqrt(dt);
+
+    const endingValues = [];
+    const samplePaths = [];
+    const pathSampleCount = Math.min(10, numSimulations);
+
+    // Box-Muller Gaussian normal distribution sampler
+    function randomNorm() {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    for (let s = 0; s < numSimulations; s++) {
+      let currentVal = initialValue;
+      const trajectory = [Math.round(currentVal)];
+
+      for (let m = 1; m <= horizonMonths; m++) {
+        const z = randomNorm();
+        const monthlyReturn = Math.exp(monthlyDrift + monthlyVol * z) - 1;
+        currentVal = Math.max(0, (currentVal + monthlyContribution) * (1 + monthlyReturn));
+        if (s < pathSampleCount) {
+          trajectory.push(Math.round(currentVal));
+        }
+      }
+
+      endingValues.push(currentVal);
+      if (s < pathSampleCount) {
+        samplePaths.push(trajectory);
+      }
+    }
+
+    endingValues.sort((a, b) => a - b);
+
+    const meanEndingValue = Math.round(endingValues.reduce((sum, v) => sum + v, 0) / numSimulations);
+    const p5Worst = Math.round(endingValues[Math.floor(0.05 * numSimulations)]);
+    const p25 = Math.round(endingValues[Math.floor(0.25 * numSimulations)]);
+    const p50Median = Math.round(endingValues[Math.floor(0.50 * numSimulations)]);
+    const p75 = Math.round(endingValues[Math.floor(0.75 * numSimulations)]);
+    const p95Best = Math.round(endingValues[Math.floor(0.95 * numSimulations)]);
+
+    const totalPrincipal = initialValue + (monthlyContribution * horizonMonths);
+    const lossCount = endingValues.filter(val => val < totalPrincipal).length;
+    const probabilityOfLoss = Number(((lossCount / numSimulations) * 100).toFixed(1));
+
+    // 10-bin distribution histogram
+    const minVal = endingValues[0];
+    const maxVal = endingValues[endingValues.length - 1];
+    const binWidth = Math.max(1, (maxVal - minVal) / 10);
+    const histogram = [];
+
+    for (let i = 0; i < 10; i++) {
+      const binStart = minVal + i * binWidth;
+      const binEnd = binStart + binWidth;
+      const count = endingValues.filter(v => v >= binStart && (i === 9 ? v <= binEnd : v < binEnd)).length;
+      histogram.push({
+        binLabel: `$${Math.round(binStart / 1000)}k - $${Math.round(binEnd / 1000)}k`,
+        binMid: Math.round((binStart + binEnd) / 2),
+        count,
+        probabilityPct: Number(((count / numSimulations) * 100).toFixed(1))
+      });
+    }
+
     return {
       simulation: {
-        percentiles: { p10: 28000, p50: 34000, p90: 42000 },
-        paths: [
-          [25000, 25500, 26100, 27000, 28200, 29500, 31000, 32500, 34000],
-          [25000, 24800, 25200, 25800, 26400, 27100, 28000, 28900, 30000]
-        ]
+        numSimulations,
+        horizonMonths,
+        initialValue,
+        monthlyContribution,
+        totalPrincipal: Math.round(totalPrincipal),
+        summary: {
+          meanEndingValue,
+          p5Worst,
+          p25,
+          p50Median,
+          p75,
+          p95Best,
+          probabilityOfLoss,
+          expectedGain: Math.round(meanEndingValue - totalPrincipal)
+        },
+        histogram,
+        samplePaths
       }
     };
   }

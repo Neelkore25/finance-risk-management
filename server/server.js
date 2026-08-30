@@ -18,23 +18,33 @@ app.use('/api', apiRoutes);
 
 // Healthcheck Endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', platform: 'RiskGuard', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    platform: 'Finance Risk Analytics',
+    version: '2.0.0',
+    supabase_configured: !!process.env.SUPABASE_URL,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Server Internal Error:', err.stack);
+  console.error('Server Internal Error:', err.stack || err.message);
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
 async function startServer() {
-  await db.initDatabase();
-  app.listen(PORT, () => {
-    console.log(`==================================================`);
-    console.log(`  RISKGUARD SERVER RUNNING ON PORT: ${PORT}`);
-    console.log(`  REST API URL: http://localhost:${PORT}/api`);
-    console.log(`==================================================`);
-  });
+  try {
+    await db.initDatabase();
+    app.listen(PORT, () => {
+      console.log(`==================================================`);
+      console.log(`  FINANCE RISK ANALYTICS SERVER RUNNING ON PORT: ${PORT}`);
+      console.log(`  REST API URL: http://localhost:${PORT}/api`);
+      console.log(`==================================================`);
+    });
+  } catch (err) {
+    console.error('Failed to start server cleanly:', err.message);
+  }
 }
 
 startServer();
