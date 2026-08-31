@@ -3,7 +3,10 @@
  * Deterministic, explainable, and testable risk calculation module.
  */
 
-function calculatePersonalRisk(profile, expenses = [], debts = [], investments = [], goals = []) {
+function calculatePersonalRisk(profile, expenses = [], debts = [], investments = [], goals = [], userSettings = {}) {
+  const dtiTarget = Math.max(10, Math.min(80, Number(userSettings?.dtiLimit || 36)));
+  const emergencyTarget = Math.max(1, Math.min(24, Number(userSettings?.emergencyTargetMonths || 6)));
+
   // Safe extraction with default fallbacks
   const monthlyIncome = Math.max(0, Number(profile?.monthly_income || 0));
   const essentialExp = Math.max(0, Number(profile?.monthly_essential_expenses || 0));
@@ -24,32 +27,32 @@ function calculatePersonalRisk(profile, expenses = [], debts = [], investments =
   // Portfolio total
   const totalPortfolioValue = investments.reduce((sum, inv) => sum + Number(inv.amount_value || (inv.quantity * inv.current_price) || 0), 0);
 
-  // 1. DEBT RISK CALCULATION
+  // 1. DEBT RISK CALCULATION (Dynamic against dtiTarget)
   const dtiRatio = monthlyIncome > 0 ? (totalDebtPayment / monthlyIncome) * 100 : (totalDebtPayment > 0 ? 100 : 0);
   let debtScore = 0;
   let debtLevel = 'Low Risk';
   let debtExplanation = '';
   let debtAction = '';
 
-  if (dtiRatio <= 15) {
-    debtScore = Math.round((dtiRatio / 15) * 15);
+  if (dtiRatio <= (dtiTarget * 0.5)) {
+    debtScore = Math.round((dtiRatio / (dtiTarget * 0.5)) * 15);
     debtLevel = 'Low Risk';
-    debtExplanation = `Your Debt-to-Income (DTI) ratio is ${dtiRatio.toFixed(1)}%, well within the safe threshold of 20%.`;
-    debtAction = 'Maintain current debt levels and pay off high-interest balances if any.';
-  } else if (dtiRatio <= 35) {
-    debtScore = Math.round(15 + ((dtiRatio - 15) / 20) * 35);
+    debtExplanation = `Your Debt-to-Income (DTI) ratio is ${dtiRatio.toFixed(1)}%, well within your target threshold of ${dtiTarget}%.`;
+    debtAction = `Maintain current debt levels under your ${dtiTarget}% limit and pay off high-interest balances if any.`;
+  } else if (dtiRatio <= dtiTarget) {
+    debtScore = Math.round(15 + ((dtiRatio - (dtiTarget * 0.5)) / (dtiTarget * 0.5)) * 30);
     debtLevel = 'Moderate Risk';
-    debtExplanation = `Your DTI ratio is ${dtiRatio.toFixed(1)}%. Debt payments absorb a notable portion of your monthly income.`;
-    debtAction = 'Avoid taking on new loans and consider accelerating high-interest debt payoffs.';
-  } else if (dtiRatio <= 50) {
-    debtScore = Math.round(50 + ((dtiRatio - 35) / 15) * 30);
+    debtExplanation = `Your DTI ratio is ${dtiRatio.toFixed(1)}%. Debt payments absorb a notable portion of your monthly income close to your ${dtiTarget}% limit.`;
+    debtAction = `Avoid taking on new loans to keep debt obligations beneath ${dtiTarget}%.`;
+  } else if (dtiRatio <= (dtiTarget * 1.4)) {
+    debtScore = Math.round(50 + ((dtiRatio - dtiTarget) / (dtiTarget * 0.4)) * 30);
     debtLevel = 'High Risk';
-    debtExplanation = `High DTI ratio of ${dtiRatio.toFixed(1)}%. Over a third of your income is locked into debt service.`;
+    debtExplanation = `High DTI ratio of ${dtiRatio.toFixed(1)}%, exceeding your target limit of ${dtiTarget}%.`;
     debtAction = 'Prioritize debt consolidation or aggressive debt snowball/avalanche repayment.';
   } else {
-    debtScore = Math.min(100, Math.round(80 + ((dtiRatio - 50) / 50) * 20));
+    debtScore = Math.min(100, Math.round(80 + ((dtiRatio - (dtiTarget * 1.4)) / 30) * 20));
     debtLevel = 'Critical Risk';
-    debtExplanation = `Critical DTI ratio of ${dtiRatio.toFixed(1)}%. Debt obligations severely impair your financial stability.`;
+    debtExplanation = `Critical DTI ratio of ${dtiRatio.toFixed(1)}%, severely exceeding your target limit of ${dtiTarget}%.`;
     debtAction = 'Immediate debt restructuring or financial counseling recommended.';
   }
 
@@ -82,28 +85,28 @@ function calculatePersonalRisk(profile, expenses = [], debts = [], investments =
     liquidityAction = 'Emergency cash allocation required to avoid solvency stress.';
   }
 
-  // 3. EMERGENCY FUND RISK CALCULATION
+  // 3. EMERGENCY FUND RISK CALCULATION (Dynamic against emergencyTarget)
   const emergencyCoverageMonths = essentialExp > 0 ? emergencyFund / essentialExp : (emergencyFund > 0 ? 12 : 0);
   let emergencyScore = 0;
   let emergencyLevel = 'Low Risk';
   let emergencyExplanation = '';
   let emergencyAction = '';
 
-  if (emergencyCoverageMonths >= 6) {
-    emergencyScore = Math.max(0, Math.round(10 - (emergencyCoverageMonths - 6)));
+  if (emergencyCoverageMonths >= emergencyTarget) {
+    emergencyScore = Math.max(0, Math.round(10 - Math.min(10, (emergencyCoverageMonths - emergencyTarget))));
     emergencyLevel = 'Low Risk';
-    emergencyExplanation = `Dedicated emergency fund covers ${emergencyCoverageMonths.toFixed(1)} months of essential survival expenses.`;
+    emergencyExplanation = `Dedicated emergency fund covers ${emergencyCoverageMonths.toFixed(1)} months of essential expenses, meeting your target of ${emergencyTarget} months.`;
     emergencyAction = 'Maintain emergency fund in a separate, accessible account.';
-  } else if (emergencyCoverageMonths >= 3) {
-    emergencyScore = Math.round(10 + ((6 - emergencyCoverageMonths) / 3) * 35);
+  } else if (emergencyCoverageMonths >= (emergencyTarget * 0.5)) {
+    emergencyScore = Math.round(10 + ((emergencyTarget - emergencyCoverageMonths) / (emergencyTarget * 0.5)) * 35);
     emergencyLevel = 'Moderate Risk';
-    emergencyExplanation = `Emergency fund covers ${emergencyCoverageMonths.toFixed(1)} months of essential spending.`;
-    emergencyAction = 'Aim to build emergency fund to cover at least 6 months of essential needs.';
+    emergencyExplanation = `Emergency fund covers ${emergencyCoverageMonths.toFixed(1)} months of essential spending vs target of ${emergencyTarget} months.`;
+    emergencyAction = `Aim to build emergency fund to cover at least ${emergencyTarget} months of essential needs.`;
   } else if (emergencyCoverageMonths >= 1) {
-    emergencyScore = Math.round(45 + ((3 - emergencyCoverageMonths) / 2) * 35);
+    emergencyScore = Math.round(45 + (((emergencyTarget * 0.5) - emergencyCoverageMonths) / (emergencyTarget * 0.5)) * 35);
     emergencyLevel = 'High Risk';
     emergencyExplanation = `Emergency fund covers only ${emergencyCoverageMonths.toFixed(1)} months of essential costs.`;
-    emergencyAction = 'Set up automated monthly contributions to emergency savings.';
+    emergencyAction = `Set up automated monthly contributions to reach ${emergencyTarget} months of emergency savings.`;
   } else {
     emergencyScore = Math.min(100, Math.round(80 + (1 - emergencyCoverageMonths) * 20));
     emergencyLevel = 'Critical Risk';

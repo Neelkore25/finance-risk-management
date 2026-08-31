@@ -90,12 +90,12 @@ export function formatINR(amount) {
 }
 
 /**
- * Deterministic Personal Risk Calculator Engine
+ * Deterministic Personal Risk Calculator Engine (Fully Dynamic Settings Support)
  */
-export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [], investments = [], goals = []) {
-  const settings = getSavedSettings();
-  const dtiTarget = settings.dtiLimit || 36;
-  const emergencyTarget = settings.emergencyTargetMonths || 6;
+export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [], investments = [], goals = [], customSettings = null) {
+  const settings = customSettings || getSavedSettings();
+  const dtiTarget = Math.max(10, Math.min(80, Number(settings.dtiLimit || 36)));
+  const emergencyTarget = Math.max(1, Math.min(24, Number(settings.emergencyTargetMonths || 6)));
 
   const monthlyIncome = Number(profile?.monthly_net_income || 0);
   const essentialExp = Number(profile?.essential_expenses || 0);
@@ -112,13 +112,34 @@ export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [],
   const emergencyCoverageMonths = essentialExp > 0 ? Number((emergencyFund / essentialExp).toFixed(1)) : 0;
   const liquidCoverageMonths = totalMonthlyExpenses > 0 ? Number((existingSavings / totalMonthlyExpenses).toFixed(1)) : 0;
 
-  // Category Risk Scores (0-100 scale, dynamically scaled by settings thresholds)
-  const debtScore = Math.min(100, Math.round((dtiRatio / dtiTarget) * 50));
-  const cashFlowScore = netCashFlow < 0 ? 90 : Math.max(0, 100 - savingsRate * 2);
-  const emergencyScore = emergencyCoverageMonths < (emergencyTarget / 2) ? 85 : emergencyCoverageMonths < emergencyTarget ? 40 : 15;
-  const liquidityScore = liquidCoverageMonths < 2 ? 80 : 20;
+  // 1. Debt Risk Score (Dynamic against user's dtiTarget)
+  let debtScore = 0;
+  if (dtiRatio <= dtiTarget) {
+    debtScore = Math.min(45, Math.round((dtiRatio / dtiTarget) * 45));
+  } else {
+    const excess = dtiRatio - dtiTarget;
+    debtScore = Math.min(100, Math.round(50 + (excess / Math.max(1, 100 - dtiTarget)) * 50));
+  }
 
-  const totalPortfolioValue = investments.reduce((sum, inv) => sum + Number(inv.current_price * inv.quantity || 0), 0);
+  // 2. Cash Flow Score
+  const cashFlowScore = netCashFlow < 0 ? 90 : Math.max(0, Math.min(100, 100 - savingsRate * 2));
+
+  // 3. Emergency Fund Score (Dynamic against user's emergencyTarget)
+  let emergencyScore = 20;
+  if (emergencyCoverageMonths >= emergencyTarget) {
+    emergencyScore = Math.max(10, Math.round(20 - Math.min(10, (emergencyCoverageMonths - emergencyTarget) * 2)));
+  } else if (emergencyCoverageMonths <= 0) {
+    emergencyScore = 95;
+  } else {
+    const deficitRatio = (emergencyTarget - emergencyCoverageMonths) / emergencyTarget;
+    emergencyScore = Math.min(95, Math.round(30 + deficitRatio * 65));
+  }
+
+  // 4. Liquidity Score
+  const liquidityScore = liquidCoverageMonths < 1 ? 85 : (liquidCoverageMonths < 2 ? 60 : 20);
+
+  // 5. Concentration Score
+  const totalPortfolioValue = investments.reduce((sum, inv) => sum + Number(inv.current_price * inv.quantity || inv.amount_value || 0), 0);
   const concentrationScore = investments.length < 2 ? 75 : 25;
 
   const overallScore = Math.min(100, Math.max(0, Math.round(
@@ -136,7 +157,7 @@ export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [],
   return {
     overallScore,
     overallLevel,
-    overallSummary: `Your modeled financial risk score is ${overallScore}/100 (${overallLevel}). Debt-to-Income is ${dtiRatio}%, and Emergency Fund covers ${emergencyCoverageMonths} months of essential expenses.`,
+    overallSummary: `Your modeled financial risk score is ${overallScore}/100 (${overallLevel}). Debt-to-Income is ${dtiRatio}% (target: ${dtiTarget}%), and Emergency Fund covers ${emergencyCoverageMonths} months (target: ${emergencyTarget} mos).`,
     metrics: {
       monthlyIncome,
       essentialExp,
@@ -150,14 +171,56 @@ export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [],
       dtiRatio,
       emergencyCoverageMonths,
       liquidCoverageMonths,
-      totalPortfolioValue
+      totalPortfolioValue,
+      dtiTarget,
+      emergencyTarget
     },
     categories: {
-      debtRisk: { score: debtScore, level: debtScore > 50 ? 'High Risk' : 'Low Risk', weight: '25%', impact: Number((debtScore * 0.25).toFixed(1)), metric: `${dtiRatio}% DTI`, explanation: `DTI ratio is ${dtiRatio}%.`, action: 'Keep monthly EMI debt obligations under 36% of net income.' },
-      cashFlowRisk: { score: cashFlowScore, level: cashFlowScore > 50 ? 'High Risk' : 'Low Risk', weight: '25%', impact: Number((cashFlowScore * 0.25).toFixed(1)), metric: formatINR(netCashFlow), explanation: `Net monthly cash flow surplus is ${formatINR(netCashFlow)}.`, action: 'Optimize discretionary spending to increase monthly surplus.' },
-      emergencyFundRisk: { score: emergencyScore, level: emergencyScore > 50 ? 'High Risk' : 'Low Risk', weight: '20%', impact: Number((emergencyScore * 0.20).toFixed(1)), metric: `${emergencyCoverageMonths} Months`, explanation: `Emergency fund covers ${emergencyCoverageMonths} months of essential expenses.`, action: 'Build liquid emergency fund to at least 6 months of essential spending.' },
-      liquidityRisk: { score: liquidityScore, level: liquidityScore > 50 ? 'High Risk' : 'Low Risk', weight: '15%', impact: Number((liquidityScore * 0.15).toFixed(1)), metric: `${liquidCoverageMonths} Months`, explanation: `Liquid savings cover ${liquidCoverageMonths} months of total expenses.`, action: 'Maintain accessible cash buffer in high-yield savings.' },
-      investmentConcentrationRisk: { score: concentrationScore, level: concentrationScore > 50 ? 'High Risk' : 'Low Risk', weight: '15%', impact: Number((concentrationScore * 0.15).toFixed(1)), metric: `${investments.length} Asset Holdings`, explanation: `Portfolio contains ${investments.length} distinct asset holdings.`, action: 'Diversify portfolio across equities, bonds, and mutual funds.' }
+      debtRisk: { 
+        score: debtScore, 
+        level: debtScore > 50 ? 'High Risk' : (debtScore > 30 ? 'Moderate Risk' : 'Low Risk'), 
+        weight: '25%', 
+        impact: Number((debtScore * 0.25).toFixed(1)), 
+        metric: `${dtiRatio}% DTI (Limit: ${dtiTarget}%)`, 
+        explanation: `DTI ratio is ${dtiRatio}%. ${dtiRatio > dtiTarget ? `Exceeds your configured threshold of ${dtiTarget}%.` : `Within your configured limit of ${dtiTarget}%.`}`, 
+        action: `Keep monthly EMI debt obligations under ${dtiTarget}% of net income.` 
+      },
+      cashFlowRisk: { 
+        score: cashFlowScore, 
+        level: cashFlowScore > 50 ? 'High Risk' : (cashFlowScore > 30 ? 'Moderate Risk' : 'Low Risk'), 
+        weight: '25%', 
+        impact: Number((cashFlowScore * 0.25).toFixed(1)), 
+        metric: formatINR(netCashFlow), 
+        explanation: `Net monthly cash flow surplus is ${formatINR(netCashFlow)}.`, 
+        action: 'Optimize discretionary spending to increase monthly surplus.' 
+      },
+      emergencyFundRisk: { 
+        score: emergencyScore, 
+        level: emergencyScore > 50 ? 'High Risk' : (emergencyScore > 30 ? 'Moderate Risk' : 'Low Risk'), 
+        weight: '20%', 
+        impact: Number((emergencyScore * 0.20).toFixed(1)), 
+        metric: `${emergencyCoverageMonths}/${emergencyTarget} Months`, 
+        explanation: `Emergency fund covers ${emergencyCoverageMonths} months of essential expenses vs target of ${emergencyTarget} months.`, 
+        action: `Build liquid emergency fund to at least ${emergencyTarget} months of essential spending.` 
+      },
+      liquidityRisk: { 
+        score: liquidityScore, 
+        level: liquidityScore > 50 ? 'High Risk' : (liquidityScore > 30 ? 'Moderate Risk' : 'Low Risk'), 
+        weight: '15%', 
+        impact: Number((liquidityScore * 0.15).toFixed(1)), 
+        metric: `${liquidCoverageMonths} Months`, 
+        explanation: `Liquid savings cover ${liquidCoverageMonths} months of total expenses.`, 
+        action: 'Maintain accessible cash buffer in high-yield savings.' 
+      },
+      investmentConcentrationRisk: { 
+        score: concentrationScore, 
+        level: concentrationScore > 50 ? 'High Risk' : 'Low Risk', 
+        weight: '15%', 
+        impact: Number((concentrationScore * 0.15).toFixed(1)), 
+        metric: `${investments.length} Asset Holdings`, 
+        explanation: `Portfolio contains ${investments.length} distinct asset holdings.`, 
+        action: 'Diversify portfolio across equities, bonds, and mutual funds.' 
+      }
     }
   };
 }

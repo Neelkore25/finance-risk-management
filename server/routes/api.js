@@ -418,8 +418,15 @@ router.get('/risk/personal', authMiddleware, (req, res) => {
     const debts = db.prepare('SELECT * FROM debts WHERE user_id = ?').all(req.user.userId);
     const investments = db.prepare('SELECT * FROM investments WHERE user_id = ?').all(req.user.userId);
     const goals = db.prepare('SELECT * FROM goals WHERE user_id = ?').all(req.user.userId);
+    const userSettings = db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(req.user.userId) || {};
 
-    const assessment = calculatePersonalRisk(profile, expenses, debts, investments, goals);
+    const dynamicSettings = {
+      dtiLimit: req.query.dtiLimit ? Number(req.query.dtiLimit) : (userSettings.dti_limit || 36),
+      emergencyTargetMonths: req.query.emergencyTargetMonths ? Number(req.query.emergencyTargetMonths) : (userSettings.emergency_target_months || 6),
+      varConfidence: req.query.varConfidence ? Number(req.query.varConfidence) : (userSettings.var_confidence || 95)
+    };
+
+    const assessment = calculatePersonalRisk(profile, expenses, debts, investments, goals, dynamicSettings);
 
     // Save history snapshot
     db.prepare(`
@@ -613,11 +620,22 @@ router.get('/alerts', authMiddleware, (req, res) => {
     const debts = db.prepare('SELECT * FROM debts WHERE user_id = ?').all(req.user.userId);
     const investments = db.prepare('SELECT * FROM investments WHERE user_id = ?').all(req.user.userId);
     const goals = db.prepare('SELECT * FROM goals WHERE user_id = ?').all(req.user.userId);
+    const userSettings = db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(req.user.userId) || {};
 
-    const riskAssessment = calculatePersonalRisk(profile, expenses, debts, investments, goals);
+    const dynamicSettings = {
+      dtiLimit: req.query.dtiLimit ? Number(req.query.dtiLimit) : (userSettings.dti_limit || 36),
+      emergencyTargetMonths: req.query.emergencyTargetMonths ? Number(req.query.emergencyTargetMonths) : (userSettings.emergency_target_months || 6),
+      alertDtiBreach: req.query.alertDtiBreach !== undefined ? req.query.alertDtiBreach !== 'false' : (userSettings.alert_dti_breach !== 0),
+      alertLowReserves: req.query.alertLowReserves !== undefined ? req.query.alertLowReserves !== 'false' : (userSettings.alert_low_reserves !== 0),
+      alertVarVolatility: req.query.alertVarVolatility !== undefined ? req.query.alertVarVolatility !== 'false' : (userSettings.alert_var_volatility !== 0),
+      alertHighConcentration: req.query.alertHighConcentration !== undefined ? req.query.alertHighConcentration !== 'false' : true,
+      alertBudgetVariance: req.query.alertBudgetVariance !== undefined ? req.query.alertBudgetVariance !== 'false' : true
+    };
+
+    const riskAssessment = calculatePersonalRisk(profile, expenses, debts, investments, goals, dynamicSettings);
     const portfolioRisk = calculatePortfolioRisk(investments);
 
-    const alertData = generateAlerts(riskAssessment, portfolioRisk);
+    const alertData = generateAlerts(riskAssessment, portfolioRisk, dynamicSettings);
     res.json(alertData);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch alerts.' });
@@ -686,9 +704,13 @@ router.get('/settings', authMiddleware, (req, res) => {
 
 router.put('/settings', authMiddleware, (req, res) => {
   try {
-    const { theme_preference } = req.body;
-    db.prepare('UPDATE user_settings SET theme_preference = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
-      .run(theme_preference || 'dark', req.user.userId);
+    const { theme_preference, dti_limit, emergency_target_months, var_confidence, base_currency, number_format, alert_dti_breach, alert_low_reserves, alert_var_volatility } = req.body;
+    db.prepare(`
+      UPDATE user_settings 
+      SET theme_preference = COALESCE(?, theme_preference),
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE user_id = ?
+    `).run(theme_preference || 'dark', req.user.userId);
     const updated = db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(req.user.userId);
     res.json({ settings: updated });
   } catch (err) {
