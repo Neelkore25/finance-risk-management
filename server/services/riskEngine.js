@@ -8,21 +8,21 @@ function calculatePersonalRisk(profile, expenses = [], debts = [], investments =
   const emergencyTarget = Math.max(1, Math.min(24, Number(userSettings?.emergencyTargetMonths || 6)));
 
   // Safe extraction with default fallbacks
-  const monthlyIncome = Math.max(0, Number(profile?.monthly_income || 0));
-  const essentialExp = Math.max(0, Number(profile?.monthly_essential_expenses || 0));
-  const discretionaryExp = Math.max(0, Number(profile?.monthly_discretionary_expenses || 0));
+  const monthlyIncome = Math.max(0, Number(profile?.monthly_income ?? profile?.monthly_net_income ?? 0));
+  const essentialExp = Math.max(0, Number(profile?.monthly_essential_expenses ?? profile?.essential_expenses ?? 0));
+  const discretionaryExp = Math.max(0, Number(profile?.monthly_discretionary_expenses ?? profile?.discretionary_expenses ?? 0));
   
   // Calculate total monthly expenses dynamically from expense items if present, else profile
   const totalItemizedExp = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const totalMonthlyExpenses = Math.max(essentialExp + discretionaryExp, totalItemizedExp);
   
-  const existingSavings = Math.max(0, Number(profile?.existing_savings || 0));
-  const emergencyFund = Math.max(0, Number(profile?.emergency_fund || 0));
+  const existingSavings = Math.max(0, Number(profile?.existing_savings ?? profile?.liquid_savings ?? 0));
+  const emergencyFund = Math.max(0, Number(profile?.emergency_fund ?? existingSavings));
   
   // Debt calculation
-  const totalItemizedDebtPayment = debts.reduce((sum, d) => sum + Number(d.monthly_payment || 0), 0);
-  const totalDebtPayment = Math.max(Number(profile?.monthly_debt_payment || 0), totalItemizedDebtPayment);
-  const totalOutstandingDebt = debts.reduce((sum, d) => sum + Number(d.outstanding_amount || 0), 0);
+  const totalItemizedDebtPayment = debts.reduce((sum, d) => sum + Number(d.monthly_payment ?? d.monthly_emi ?? 0), 0);
+  const totalDebtPayment = Math.max(Number(profile?.monthly_debt_payment ?? profile?.monthly_debt_payments ?? 0), totalItemizedDebtPayment);
+  const totalOutstandingDebt = debts.reduce((sum, d) => sum + Number(d.outstanding_amount ?? d.outstanding_balance ?? 0), 0);
 
   // Portfolio total
   const totalPortfolioValue = investments.reduce((sum, inv) => sum + Number(inv.amount_value || (inv.quantity * inv.current_price) || 0), 0);

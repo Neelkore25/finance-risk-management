@@ -117,7 +117,12 @@ router.get('/profile', authMiddleware, (req, res) => {
 });
 
 router.put('/profile', authMiddleware, (req, res) => {
-  const { monthly_income, monthly_essential_expenses, monthly_discretionary_expenses, existing_savings, emergency_fund, monthly_debt_payment } = req.body;
+  const income = Math.max(0, Number(req.body.monthly_income ?? req.body.monthly_net_income ?? 0));
+  const essential = Math.max(0, Number(req.body.monthly_essential_expenses ?? req.body.essential_expenses ?? 0));
+  const discretionary = Math.max(0, Number(req.body.monthly_discretionary_expenses ?? req.body.discretionary_expenses ?? 0));
+  const savings = Math.max(0, Number(req.body.existing_savings ?? req.body.liquid_savings ?? 0));
+  const emergency = Math.max(0, Number(req.body.emergency_fund ?? savings));
+  const debt = Math.max(0, Number(req.body.monthly_debt_payment ?? req.body.monthly_debt_payments ?? 0));
 
   try {
     db.prepare(`
@@ -130,15 +135,7 @@ router.put('/profile', authMiddleware, (req, res) => {
           monthly_debt_payment = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE user_id = ?
-    `).run(
-      Math.max(0, Number(monthly_income || 0)),
-      Math.max(0, Number(monthly_essential_expenses || 0)),
-      Math.max(0, Number(monthly_discretionary_expenses || 0)),
-      Math.max(0, Number(existing_savings || 0)),
-      Math.max(0, Number(emergency_fund || 0)),
-      Math.max(0, Number(monthly_debt_payment || 0)),
-      req.user.userId
-    );
+    `).run(income, essential, discretionary, savings, emergency, debt, req.user.userId);
 
     const updated = db.prepare('SELECT * FROM financial_profiles WHERE user_id = ?').get(req.user.userId);
     res.json({ profile: updated });

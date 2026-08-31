@@ -90,7 +90,8 @@ export function Investments() {
         });
       }
       setModalOpen(false);
-      loadInvestments();
+      await loadInvestments();
+      window.dispatchEvent(new CustomEvent('portfolioUpdated'));
     } catch (err) {
       alert(err.message || 'Failed to save holding');
     }
@@ -100,7 +101,8 @@ export function Investments() {
     if (!confirm('Are you sure you want to remove this holding?')) return;
     try {
       await apiFetch(`/investments/${id}`, { method: 'DELETE' });
-      loadInvestments();
+      await loadInvestments();
+      window.dispatchEvent(new CustomEvent('portfolioUpdated'));
     } catch (err) {
       alert('Failed to delete holding');
     }

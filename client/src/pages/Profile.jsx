@@ -4,12 +4,12 @@ import { User, Save, DollarSign, Wallet, ShieldCheck, CheckCircle2, AlertCircle 
 
 export function Profile() {
   const [profile, setProfile] = useState({
-    monthly_income: 5000,
-    monthly_essential_expenses: 2000,
-    monthly_discretionary_expenses: 800,
-    existing_savings: 10000,
-    emergency_fund: 6000,
-    monthly_debt_payment: 400
+    monthly_income: '',
+    monthly_essential_expenses: '',
+    monthly_discretionary_expenses: '',
+    existing_savings: '',
+    emergency_fund: '',
+    monthly_debt_payment: ''
   });
 
   const [loading, setLoading] = useState(true);
@@ -21,8 +21,16 @@ export function Profile() {
     async function loadProfile() {
       try {
         const res = await apiFetch('/profile');
-        if (res.profile) {
-          setProfile(res.profile);
+        if (res && res.profile) {
+          const p = res.profile;
+          setProfile({
+            monthly_income: p.monthly_income ?? p.monthly_net_income ?? '',
+            monthly_essential_expenses: p.monthly_essential_expenses ?? p.essential_expenses ?? '',
+            monthly_discretionary_expenses: p.monthly_discretionary_expenses ?? p.discretionary_expenses ?? '',
+            existing_savings: p.existing_savings ?? p.liquid_savings ?? '',
+            emergency_fund: p.emergency_fund ?? '',
+            monthly_debt_payment: p.monthly_debt_payment ?? p.monthly_debt_payments ?? ''
+          });
         }
       } catch (err) {
         setError('Failed to load profile.');
@@ -59,21 +67,39 @@ export function Profile() {
 
     try {
       const sanitizedProfile = {
-        ...profile,
+        monthly_net_income: Number(profile.monthly_income || 0),
         monthly_income: Number(profile.monthly_income || 0),
+        monthly_debt_payments: Number(profile.monthly_debt_payment || 0),
+        monthly_debt_payment: Number(profile.monthly_debt_payment || 0),
+        essential_expenses: Number(profile.monthly_essential_expenses || 0),
         monthly_essential_expenses: Number(profile.monthly_essential_expenses || 0),
+        discretionary_expenses: Number(profile.monthly_discretionary_expenses || 0),
         monthly_discretionary_expenses: Number(profile.monthly_discretionary_expenses || 0),
+        liquid_savings: Number(profile.existing_savings || 0),
         existing_savings: Number(profile.existing_savings || 0),
-        emergency_fund: Number(profile.emergency_fund || 0),
-        monthly_debt_payment: Number(profile.monthly_debt_payment || 0)
+        emergency_fund: Number(profile.emergency_fund || 0)
       };
 
       const res = await apiFetch('/profile', {
         method: 'PUT',
         body: JSON.stringify(sanitizedProfile)
       });
-      setProfile(res.profile);
-      setMessage('Financial profile successfully updated and risk engine re-evaluated.');
+
+      if (res && res.profile) {
+        const p = res.profile;
+        setProfile({
+          monthly_income: p.monthly_income ?? p.monthly_net_income ?? '',
+          monthly_essential_expenses: p.monthly_essential_expenses ?? p.essential_expenses ?? '',
+          monthly_discretionary_expenses: p.monthly_discretionary_expenses ?? p.discretionary_expenses ?? '',
+          existing_savings: p.existing_savings ?? p.liquid_savings ?? '',
+          emergency_fund: p.emergency_fund ?? '',
+          monthly_debt_payment: p.monthly_debt_payment ?? p.monthly_debt_payments ?? ''
+        });
+        setMessage('Financial profile successfully updated and risk engine re-evaluated.');
+        window.dispatchEvent(new CustomEvent('profileUpdated', { detail: res.profile }));
+      } else {
+        throw new Error('Failed to save profile: invalid server response.');
+      }
     } catch (err) {
       setError(err.message || 'Failed to save profile.');
     } finally {

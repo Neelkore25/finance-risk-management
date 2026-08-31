@@ -82,7 +82,8 @@ export function Expenses() {
         });
       }
       setModalOpen(false);
-      loadExpenses();
+      await loadExpenses();
+      window.dispatchEvent(new CustomEvent('expensesUpdated'));
     } catch (err) {
       alert(err.message || 'Failed to save expense');
     }
@@ -92,7 +93,8 @@ export function Expenses() {
     if (!confirm('Are you sure you want to delete this expense?')) return;
     try {
       await apiFetch(`/expenses/${id}`, { method: 'DELETE' });
-      loadExpenses();
+      await loadExpenses();
+      window.dispatchEvent(new CustomEvent('expensesUpdated'));
     } catch (err) {
       alert('Failed to delete expense');
     }

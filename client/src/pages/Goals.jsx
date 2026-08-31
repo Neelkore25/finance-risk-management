@@ -75,7 +75,8 @@ export function Goals() {
         });
       }
       setModalOpen(false);
-      loadGoals();
+      await loadGoals();
+      window.dispatchEvent(new CustomEvent('goalsUpdated'));
     } catch (err) {
       alert(err.message || 'Failed to save goal');
     }
@@ -85,7 +86,8 @@ export function Goals() {
     if (!confirm('Are you sure you want to delete this goal?')) return;
     try {
       await apiFetch(`/goals/${id}`, { method: 'DELETE' });
-      loadGoals();
+      await loadGoals();
+      window.dispatchEvent(new CustomEvent('goalsUpdated'));
     } catch (err) {
       alert('Failed to delete goal');
     }

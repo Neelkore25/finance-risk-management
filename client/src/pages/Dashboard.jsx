@@ -169,12 +169,14 @@ export function Dashboard() {
     window.addEventListener('expensesUpdated', loadDashboardData);
     window.addEventListener('debtUpdated', loadDashboardData);
     window.addEventListener('portfolioUpdated', loadDashboardData);
+    window.addEventListener('goalsUpdated', loadDashboardData);
     window.addEventListener('settingsUpdated', loadDashboardData);
     return () => {
       window.removeEventListener('profileUpdated', loadDashboardData);
       window.removeEventListener('expensesUpdated', loadDashboardData);
       window.removeEventListener('debtUpdated', loadDashboardData);
       window.removeEventListener('portfolioUpdated', loadDashboardData);
+      window.removeEventListener('goalsUpdated', loadDashboardData);
       window.removeEventListener('settingsUpdated', loadDashboardData);
     };
   }, [user]);

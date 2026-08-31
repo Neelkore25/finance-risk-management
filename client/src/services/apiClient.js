@@ -97,20 +97,20 @@ export function calculatePersonalRiskMetrics(profile, expenses = [], debts = [],
   const dtiTarget = Math.max(10, Math.min(80, Number(settings.dtiLimit || 36)));
   const emergencyTarget = Math.max(1, Math.min(24, Number(settings.emergencyTargetMonths || 6)));
 
-  const monthlyIncome = Number(profile?.monthly_net_income || 0);
-  const essentialExp = Number(profile?.essential_expenses || 0);
-  const discretionaryExp = Number(profile?.discretionary_expenses || 0);
-  const totalDebtPayment = Number(profile?.monthly_debt_payments || 0);
-  const existingSavings = Number(profile?.liquid_savings || 0);
-  const emergencyFund = Number(profile?.emergency_fund || profile?.liquid_savings || 0);
+  const monthlyIncome = Number(profile?.monthly_net_income ?? profile?.monthly_income ?? 0);
+  const essentialExp = Number(profile?.essential_expenses ?? profile?.monthly_essential_expenses ?? 0);
+  const discretionaryExp = Number(profile?.discretionary_expenses ?? profile?.monthly_discretionary_expenses ?? 0);
+  const totalDebtPayment = Number(profile?.monthly_debt_payments ?? profile?.monthly_debt_payment ?? 0);
+  const existingSavings = Number(profile?.liquid_savings ?? profile?.existing_savings ?? 0);
+  const emergencyFund = Number(profile?.emergency_fund ?? profile?.liquid_savings ?? profile?.existing_savings ?? 0);
 
   const totalMonthlyExpenses = essentialExp + discretionaryExp;
   const netCashFlow = monthlyIncome - totalMonthlyExpenses - totalDebtPayment;
   
   const savingsRate = monthlyIncome > 0 ? Math.round((netCashFlow / monthlyIncome) * 100) : 0;
-  const dtiRatio = monthlyIncome > 0 ? Math.round((totalDebtPayment / monthlyIncome) * 100) : 0;
-  const emergencyCoverageMonths = essentialExp > 0 ? Number((emergencyFund / essentialExp).toFixed(1)) : 0;
-  const liquidCoverageMonths = totalMonthlyExpenses > 0 ? Number((existingSavings / totalMonthlyExpenses).toFixed(1)) : 0;
+  const dtiRatio = monthlyIncome > 0 ? Math.round((totalDebtPayment / monthlyIncome) * 100) : (totalDebtPayment > 0 ? 100 : 0);
+  const emergencyCoverageMonths = essentialExp > 0 ? Number((emergencyFund / essentialExp).toFixed(1)) : (emergencyFund > 0 ? 12 : 0);
+  const liquidCoverageMonths = totalMonthlyExpenses > 0 ? Number((existingSavings / totalMonthlyExpenses).toFixed(1)) : (existingSavings > 0 ? 12 : 0);
 
   // 1. Debt Risk Score (Dynamic against user's dtiTarget)
   let debtScore = 0;
@@ -238,29 +238,63 @@ export async function apiFetch(endpoint, options = {}) {
 
   // 1. FINANCIAL PROFILE
   if (cleanEp === '/profile') {
+    const profileCacheKey = userId ? `riskguard_profile_${userId}` : 'riskguard_guest_profile';
+
     if (method === 'PUT') {
+      const income = Number(body.monthly_net_income ?? body.monthly_income ?? 0);
+      const debt = Number(body.monthly_debt_payments ?? body.monthly_debt_payment ?? 0);
+      const essential = Number(body.essential_expenses ?? body.monthly_essential_expenses ?? 0);
+      const discretionary = Number(body.discretionary_expenses ?? body.monthly_discretionary_expenses ?? 0);
+      const savings = Number(body.liquid_savings ?? body.existing_savings ?? 0);
+      const emergency = Number(body.emergency_fund ?? savings);
+
       const payload = {
-        monthly_net_income: Number(body.monthly_net_income || 0),
-        monthly_debt_payments: Number(body.monthly_debt_payments || 0),
-        essential_expenses: Number(body.essential_expenses || 0),
-        discretionary_expenses: Number(body.discretionary_expenses || 0),
-        liquid_savings: Number(body.liquid_savings || 0),
-        emergency_fund: Number(body.emergency_fund || body.liquid_savings || 0),
+        monthly_net_income: income,
+        monthly_debt_payments: debt,
+        essential_expenses: essential,
+        discretionary_expenses: discretionary,
+        liquid_savings: savings,
+        emergency_fund: emergency,
+        monthly_income: income,
+        monthly_debt_payment: debt,
+        monthly_essential_expenses: essential,
+        monthly_discretionary_expenses: discretionary,
+        existing_savings: savings,
         updated_at: new Date().toISOString()
       };
 
-      // Always save to localStorage so guest / offline engine mode updates immediately
-      localStorage.setItem('riskguard_local_profile', JSON.stringify(payload));
+      localStorage.setItem(profileCacheKey, JSON.stringify(payload));
 
       if (userId && isSupabaseConfigured()) {
         try {
           const { data, error } = await supabase
             .from('financial_profiles')
-            .upsert({ ...payload, user_id: userId }, { onConflict: 'user_id' })
+            .upsert({
+              user_id: userId,
+              monthly_net_income: income,
+              monthly_debt_payments: debt,
+              essential_expenses: essential,
+              discretionary_expenses: discretionary,
+              liquid_savings: savings,
+              emergency_fund: emergency,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' })
             .select()
             .single();
-          if (!error && data) return { profile: data };
-        } catch (err) {}
+
+          if (error) {
+            console.error('Supabase profile save error:', error);
+            throw error;
+          }
+          if (data) {
+            const merged = { ...payload, ...data };
+            localStorage.setItem(profileCacheKey, JSON.stringify(merged));
+            return { profile: merged };
+          }
+        } catch (err) {
+          console.error('Failed to save profile to Supabase:', err);
+          throw err;
+        }
       }
 
       return { profile: payload };
@@ -269,49 +303,88 @@ export async function apiFetch(endpoint, options = {}) {
     // GET /profile
     if (userId && isSupabaseConfigured()) {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('financial_profiles')
           .select('*')
           .eq('user_id', userId)
           .maybeSingle();
-        if (data) {
-          localStorage.setItem('riskguard_local_profile', JSON.stringify(data));
-          return { profile: data };
+
+        if (error) {
+          console.error('Supabase profile fetch error:', error);
         }
-      } catch (err) {}
+
+        if (data) {
+          const normalized = {
+            ...data,
+            monthly_income: data.monthly_net_income ?? data.monthly_income ?? 0,
+            monthly_debt_payment: data.monthly_debt_payments ?? data.monthly_debt_payment ?? 0,
+            monthly_essential_expenses: data.essential_expenses ?? data.monthly_essential_expenses ?? 0,
+            monthly_discretionary_expenses: data.discretionary_expenses ?? data.monthly_discretionary_expenses ?? 0,
+            existing_savings: data.liquid_savings ?? data.existing_savings ?? 0,
+            emergency_fund: data.emergency_fund ?? 0
+          };
+          localStorage.setItem(profileCacheKey, JSON.stringify(normalized));
+          return { profile: normalized };
+        }
+      } catch (err) {
+        console.error('Failed to fetch profile from Supabase:', err);
+      }
     }
 
-    const cached = localStorage.getItem('riskguard_local_profile');
+    const cached = localStorage.getItem(profileCacheKey);
     if (cached) {
       try {
         return { profile: JSON.parse(cached) };
       } catch (err) {}
     }
 
-    return { profile: { monthly_net_income: 75000, monthly_debt_payments: 12000, essential_expenses: 30000, discretionary_expenses: 15000, liquid_savings: 100000, emergency_fund: 180000 } };
+    // Default clean zero-state for new accounts
+    return {
+      profile: {
+        monthly_net_income: 0,
+        monthly_income: 0,
+        monthly_debt_payments: 0,
+        monthly_debt_payment: 0,
+        essential_expenses: 0,
+        monthly_essential_expenses: 0,
+        discretionary_expenses: 0,
+        monthly_discretionary_expenses: 0,
+        liquid_savings: 0,
+        existing_savings: 0,
+        emergency_fund: 0
+      }
+    };
   }
 
   // 2. EXPENSES
   if (cleanEp === '/expenses') {
-    if (method === 'POST' && userId && isSupabaseConfigured()) {
-      const { data, error } = await supabase
-        .from('expenses')
-        .insert({
-          user_id: userId,
-          name: body.name,
-          category: body.category,
-          amount: Number(body.amount),
-          date: body.date || new Date().toISOString().split('T')[0],
-          is_essential: Boolean(body.is_essential)
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return { expense: data };
+    if (method === 'POST') {
+      if (userId && isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('expenses')
+          .insert({
+            user_id: userId,
+            name: body.name,
+            category: body.category,
+            amount: Number(body.amount),
+            date: body.date || new Date().toISOString().split('T')[0],
+            is_essential: Boolean(body.is_essential)
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return { expense: data };
+      }
+      return { expense: { id: Date.now(), ...body } };
     }
 
     if (userId && isSupabaseConfigured()) {
-      const { data } = await supabase.from('expenses').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .order('date', { ascending: false });
+      if (error) throw error;
       return { expenses: data || [] };
     }
     return { expenses: [] };
@@ -319,8 +392,30 @@ export async function apiFetch(endpoint, options = {}) {
 
   if (cleanEp.startsWith('/expenses/')) {
     const id = cleanEp.split('/')[2];
+    if (method === 'PUT' && userId && isSupabaseConfigured()) {
+      const { data, error } = await supabase
+        .from('expenses')
+        .update({
+          name: body.name,
+          category: body.category,
+          amount: Number(body.amount),
+          date: body.date || new Date().toISOString().split('T')[0],
+          is_essential: Boolean(body.is_essential)
+        })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { expense: data };
+    }
+
     if (method === 'DELETE' && userId && isSupabaseConfigured()) {
-      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
       if (error) throw error;
       return { success: true };
     }
@@ -328,64 +423,121 @@ export async function apiFetch(endpoint, options = {}) {
 
   // 3. DEBTS
   if (cleanEp === '/debts') {
-    if (method === 'POST' && userId && isSupabaseConfigured()) {
+    const debtName = body?.name || 'Loan';
+    const debtType = body?.debt_type || 'Personal Loan';
+    const balance = Number(body?.outstanding_amount ?? body?.outstanding_balance ?? 0);
+    const rate = Number(body?.interest_rate || 0);
+    const payment = Number(body?.monthly_payment ?? body?.monthly_emi ?? 0);
+    const dueDate = body?.due_date || null;
+
+    if (method === 'POST') {
+      if (userId && isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('debts')
+          .insert({
+            user_id: userId,
+            name: debtName,
+            debt_type: debtType,
+            outstanding_amount: balance,
+            outstanding_balance: balance,
+            interest_rate: rate,
+            monthly_payment: payment,
+            monthly_emi: payment,
+            due_date: dueDate
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return { debt: data };
+      }
+      return { debt: { id: Date.now(), ...body } };
+    }
+
+    if (userId && isSupabaseConfigured()) {
       const { data, error } = await supabase
         .from('debts')
-        .insert({
-          user_id: userId,
-          name: body.name,
-          debt_type: body.debt_type || 'Personal Loan',
-          original_amount: Number(body.original_amount),
-          outstanding_balance: Number(body.outstanding_balance),
-          interest_rate: Number(body.interest_rate),
-          monthly_emi: Number(body.monthly_emi),
-          remaining_months: Number(body.remaining_months || 12)
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const normalized = (data || []).map(d => ({
+        ...d,
+        outstanding_amount: d.outstanding_amount ?? d.outstanding_balance ?? 0,
+        monthly_payment: d.monthly_payment ?? d.monthly_emi ?? 0
+      }));
+      return { debts: normalized };
+    }
+    return { debts: [] };
+  }
+
+  if (cleanEp.startsWith('/debts/')) {
+    const id = cleanEp.split('/')[2];
+    const debtName = body?.name || 'Loan';
+    const debtType = body?.debt_type || 'Personal Loan';
+    const balance = Number(body?.outstanding_amount ?? body?.outstanding_balance ?? 0);
+    const rate = Number(body?.interest_rate || 0);
+    const payment = Number(body?.monthly_payment ?? body?.monthly_emi ?? 0);
+    const dueDate = body?.due_date || null;
+
+    if (method === 'PUT' && userId && isSupabaseConfigured()) {
+      const { data, error } = await supabase
+        .from('debts')
+        .update({
+          name: debtName,
+          debt_type: debtType,
+          outstanding_amount: balance,
+          outstanding_balance: balance,
+          interest_rate: rate,
+          monthly_payment: payment,
+          monthly_emi: payment,
+          due_date: dueDate
         })
+        .eq('id', id)
+        .eq('user_id', userId)
         .select()
         .single();
       if (error) throw error;
       return { debt: data };
     }
 
-    if (userId && isSupabaseConfigured()) {
-      const { data } = await supabase.from('debts').select('*').order('created_at', { ascending: false });
-      return { debts: data || [] };
+    if (method === 'DELETE' && userId && isSupabaseConfigured()) {
+      const { error } = await supabase
+        .from('debts')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+      if (error) throw error;
+      return { success: true };
     }
-    return { debts: [] };
   }
 
   // 4. PORTFOLIO HOLDINGS
   if (cleanEp === '/portfolio' || cleanEp === '/investments') {
-    if (method === 'POST' && userId && isSupabaseConfigured()) {
-      const amountVal = Number(body.amount_value) || (Number(body.quantity || 1) * Number(body.current_price || 0));
-      const { data, error } = await supabase
-        .from('portfolio_holdings')
-        .insert({
-          user_id: userId,
-          asset_name: body.asset_name,
-          asset_type: body.asset_type || 'Stocks',
-          sector: body.sector || 'General',
-          quantity: Number(body.quantity || 1),
-          purchase_price: Number(body.purchase_price || body.current_price || 0),
-          current_price: Number(body.current_price || 0),
-          amount_value: amountVal
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return { holding: data };
-    }
-
-    if (userId && isSupabaseConfigured()) {
-      const { data } = await supabase.from('portfolio_holdings').select('*').order('created_at', { ascending: false });
-      return { holdings: data || [] };
-    }
-
-    // LocalStorage fallback for offline mode
-    const cached = localStorage.getItem('riskguard_local_holdings');
-    let localHoldings = cached ? JSON.parse(cached) : [];
+    const holdingsKey = userId ? `riskguard_holdings_${userId}` : 'riskguard_local_holdings';
 
     if (method === 'POST') {
+      const amountVal = Number(body.amount_value) || (Number(body.quantity || 1) * Number(body.current_price || 0));
+      if (userId && isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('portfolio_holdings')
+          .insert({
+            user_id: userId,
+            asset_name: body.asset_name,
+            asset_type: body.asset_type || 'Stocks',
+            sector: body.sector || 'General',
+            quantity: Number(body.quantity || 1),
+            purchase_price: Number(body.purchase_price || body.current_price || 0),
+            current_price: Number(body.current_price || 0),
+            amount_value: amountVal
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return { holding: data };
+      }
+
+      const cached = localStorage.getItem(holdingsKey);
+      let localHoldings = cached ? JSON.parse(cached) : [];
       const newHolding = {
         id: 'hold_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
         asset_name: body.asset_name,
@@ -394,27 +546,44 @@ export async function apiFetch(endpoint, options = {}) {
         quantity: Number(body.quantity || 1),
         purchase_price: Number(body.purchase_price || body.current_price || 0),
         current_price: Number(body.current_price || 0),
-        amount_value: Number(body.amount_value) || (Number(body.quantity || 1) * Number(body.current_price || 0))
+        amount_value: amountVal
       };
       localHoldings.unshift(newHolding);
-      localStorage.setItem('riskguard_local_holdings', JSON.stringify(localHoldings));
+      localStorage.setItem(holdingsKey, JSON.stringify(localHoldings));
       return { holding: newHolding };
     }
 
-    return { holdings: localHoldings };
+    if (userId && isSupabaseConfigured()) {
+      const { data, error } = await supabase
+        .from('portfolio_holdings')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return { holdings: data || [] };
+    }
+
+    const cached = localStorage.getItem(holdingsKey);
+    return { holdings: cached ? JSON.parse(cached) : [] };
   }
 
   if (cleanEp.startsWith('/portfolio/') || cleanEp.startsWith('/investments/')) {
     const id = cleanEp.split('/')[2];
+    const holdingsKey = userId ? `riskguard_holdings_${userId}` : 'riskguard_local_holdings';
+
     if (method === 'DELETE') {
       if (userId && isSupabaseConfigured()) {
-        const { error } = await supabase.from('portfolio_holdings').delete().eq('id', id);
+        const { error } = await supabase
+          .from('portfolio_holdings')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', userId);
         if (error) throw error;
       }
-      const cached = localStorage.getItem('riskguard_local_holdings');
+      const cached = localStorage.getItem(holdingsKey);
       let localHoldings = cached ? JSON.parse(cached) : [];
       localHoldings = localHoldings.filter(h => String(h.id) !== String(id));
-      localStorage.setItem('riskguard_local_holdings', JSON.stringify(localHoldings));
+      localStorage.setItem(holdingsKey, JSON.stringify(localHoldings));
       return { success: true };
     }
 
@@ -433,59 +602,124 @@ export async function apiFetch(endpoint, options = {}) {
             amount_value: amountVal
           })
           .eq('id', id)
+          .eq('user_id', userId)
           .select()
           .single();
         if (error) throw error;
         return { holding: data };
       }
-      const cached = localStorage.getItem('riskguard_local_holdings');
+      const cached = localStorage.getItem(holdingsKey);
       let localHoldings = cached ? JSON.parse(cached) : [];
       localHoldings = localHoldings.map(h => String(h.id) === String(id) ? { ...h, ...body, amount_value: amountVal } : h);
-      localStorage.setItem('riskguard_local_holdings', JSON.stringify(localHoldings));
+      localStorage.setItem(holdingsKey, JSON.stringify(localHoldings));
       return { holding: body };
     }
   }
 
   // 5. FINANCIAL GOALS
   if (cleanEp === '/goals') {
-    if (method === 'POST' && userId && isSupabaseConfigured()) {
+    const goalName = body?.name ?? body?.goal_name ?? 'Financial Goal';
+    const targetAmount = Number(body?.target_amount || 0);
+    const currentAmount = Number(body?.current_amount ?? body?.current_savings ?? 0);
+    const targetDate = body?.target_date || new Date().toISOString().split('T')[0];
+    const monthlyContrib = Number(body?.monthly_contribution || 0);
+
+    if (method === 'POST') {
+      if (userId && isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('financial_goals')
+          .insert({
+            user_id: userId,
+            name: goalName,
+            goal_name: goalName,
+            target_amount: targetAmount,
+            current_amount: currentAmount,
+            current_savings: currentAmount,
+            target_date: targetDate,
+            monthly_contribution: monthlyContrib
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return { goal: data };
+      }
+      return { goal: { id: Date.now(), ...body } };
+    }
+
+    if (userId && isSupabaseConfigured()) {
       const { data, error } = await supabase
         .from('financial_goals')
-        .insert({
-          user_id: userId,
-          goal_name: body.goal_name,
-          target_amount: Number(body.target_amount),
-          current_savings: Number(body.current_savings || 0),
-          target_date: body.target_date
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const normalized = (data || []).map(g => ({
+        ...g,
+        name: g.name || g.goal_name || 'Financial Goal',
+        current_amount: g.current_amount ?? g.current_savings ?? 0,
+        target_amount: g.target_amount ?? 0
+      }));
+      return { goals: normalized };
+    }
+    return { goals: [] };
+  }
+
+  if (cleanEp.startsWith('/goals/')) {
+    const id = cleanEp.split('/')[2];
+    const goalName = body?.name ?? body?.goal_name ?? 'Financial Goal';
+    const targetAmount = Number(body?.target_amount || 0);
+    const currentAmount = Number(body?.current_amount ?? body?.current_savings ?? 0);
+    const targetDate = body?.target_date || new Date().toISOString().split('T')[0];
+    const monthlyContrib = Number(body?.monthly_contribution || 0);
+
+    if (method === 'PUT' && userId && isSupabaseConfigured()) {
+      const { data, error } = await supabase
+        .from('financial_goals')
+        .update({
+          name: goalName,
+          goal_name: goalName,
+          target_amount: targetAmount,
+          current_amount: currentAmount,
+          current_savings: currentAmount,
+          target_date: targetDate,
+          monthly_contribution: monthlyContrib
         })
+        .eq('id', id)
+        .eq('user_id', userId)
         .select()
         .single();
       if (error) throw error;
       return { goal: data };
     }
 
-    if (userId && isSupabaseConfigured()) {
-      const { data } = await supabase.from('financial_goals').select('*').order('created_at', { ascending: false });
-      return { goals: data || [] };
+    if (method === 'DELETE' && userId && isSupabaseConfigured()) {
+      const { error } = await supabase
+        .from('financial_goals')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+      if (error) throw error;
+      return { success: true };
     }
-    return { goals: [] };
   }
 
   // 6. DYNAMIC RISK ASSESSMENT
   if (cleanEp === '/risk/personal') {
-    let prof = { monthly_net_income: 75000, monthly_debt_payments: 12000, essential_expenses: 30000, discretionary_expenses: 15000, liquid_savings: 100000, emergency_fund: 180000 };
+    let prof = { monthly_net_income: 0, monthly_debt_payments: 0, essential_expenses: 0, discretionary_expenses: 0, liquid_savings: 0, emergency_fund: 0 };
     let exps = [];
     let dts = [];
     let invs = [];
     let gls = [];
 
+    const profileCacheKey = userId ? `riskguard_profile_${userId}` : 'riskguard_guest_profile';
+
     if (userId && isSupabaseConfigured()) {
       const [pRes, eRes, dRes, iRes, gRes] = await Promise.all([
         supabase.from('financial_profiles').select('*').eq('user_id', userId).maybeSingle(),
-        supabase.from('expenses').select('*'),
-        supabase.from('debts').select('*'),
-        supabase.from('portfolio_holdings').select('*'),
-        supabase.from('financial_goals').select('*')
+        supabase.from('expenses').select('*').eq('user_id', userId),
+        supabase.from('debts').select('*').eq('user_id', userId),
+        supabase.from('portfolio_holdings').select('*').eq('user_id', userId),
+        supabase.from('financial_goals').select('*').eq('user_id', userId)
       ]);
       if (pRes.data) prof = pRes.data;
       if (eRes.data) exps = eRes.data;
@@ -493,7 +727,7 @@ export async function apiFetch(endpoint, options = {}) {
       if (iRes.data) invs = iRes.data;
       if (gRes.data) gls = gRes.data;
     } else {
-      const cached = localStorage.getItem('riskguard_local_profile');
+      const cached = localStorage.getItem(profileCacheKey);
       if (cached) {
         try {
           prof = JSON.parse(cached);
@@ -508,8 +742,17 @@ export async function apiFetch(endpoint, options = {}) {
   if (cleanEp === '/risk/portfolio') {
     let invs = [];
     if (userId && isSupabaseConfigured()) {
-      const { data } = await supabase.from('portfolio_holdings').select('*');
+      const { data } = await supabase
+        .from('portfolio_holdings')
+        .select('*')
+        .eq('user_id', userId);
       if (data && data.length > 0) invs = data;
+    } else {
+      const holdingsKey = userId ? `riskguard_holdings_${userId}` : 'riskguard_local_holdings';
+      const cached = localStorage.getItem(holdingsKey);
+      if (cached) {
+        try { invs = JSON.parse(cached); } catch (err) {}
+      }
     }
 
     // Read confidence level from endpoint URL or fall back to platform settings
@@ -522,7 +765,7 @@ export async function apiFetch(endpoint, options = {}) {
       if (!isNaN(parsedConf)) conf = parsedConf > 1 ? parsedConf / 100 : parsedConf;
     }
 
-    const totalVal = invs.reduce((sum, i) => sum + (Number(i.amount_value) || (Number(i.quantity) * Number(i.current_price))), 0) || 250000;
+    const totalVal = invs.reduce((sum, i) => sum + (Number(i.amount_value) || (Number(i.quantity) * Number(i.current_price))), 0) || 0;
 
     // Calculate asset volatility and expected return weighted by portfolio composition
     let weightedVol = 0.14; // Base 14% annual vol
@@ -601,18 +844,10 @@ export async function apiFetch(endpoint, options = {}) {
         sectorMap[sec].count += 1;
         sectorMap[sec].val += val;
       });
-    } else {
-      assetClassMap['Stocks'] = { count: 3, val: 150000 };
-      assetClassMap['Bonds'] = { count: 2, val: 62500 };
-      assetClassMap['Cash'] = { count: 1, val: 37500 };
-
-      sectorMap['Technology'] = { count: 2, val: 100000 };
-      sectorMap['Financials'] = { count: 2, val: 87500 };
-      sectorMap['Government/Sovereign'] = { count: 2, val: 62500 };
     }
 
     const byAssetClass = Object.entries(assetClassMap).map(([name, d]) => {
-      const pct = Number(((d.val / totalVal) * 100).toFixed(1));
+      const pct = totalVal > 0 ? Number(((d.val / totalVal) * 100).toFixed(1)) : 0;
       let riskLevel = 'Low Risk';
       let riskColor = 'green';
       if (pct > 50 || name.toLowerCase().includes('crypto')) {
@@ -626,7 +861,7 @@ export async function apiFetch(endpoint, options = {}) {
     });
 
     const bySector = Object.entries(sectorMap).map(([name, d]) => {
-      const pct = Number(((d.val / totalVal) * 100).toFixed(1));
+      const pct = totalVal > 0 ? Number(((d.val / totalVal) * 100).toFixed(1)) : 0;
       let riskLevel = 'Low Risk';
       let riskColor = 'green';
       if (pct > 45) {
@@ -670,8 +905,8 @@ export async function apiFetch(endpoint, options = {}) {
       } catch (err) {}
     }
 
-    // Read cached input params if present
-    const cachedCredit = localStorage.getItem('riskguard_local_credit_risk');
+    const creditKey = userId ? `riskguard_credit_${userId}` : 'riskguard_local_credit_risk';
+    const cachedCredit = localStorage.getItem(creditKey);
     let savedParams = null;
     if (cachedCredit) {
       try {
@@ -686,30 +921,22 @@ export async function apiFetch(endpoint, options = {}) {
     const paymentHistoryScore = Number(requestBody.paymentHistoryScore ?? savedParams?.metrics?.paymentHistoryScore ?? 95);
     const missedPayments = Number(requestBody.missedPayments ?? savedParams?.metrics?.missedPayments ?? 0);
 
-    // Calculate DTI and Credit Score dynamically
-    const monthlyDebtService = existingDebt * 0.03; // ~3% monthly EMI
+    const monthlyDebtService = existingDebt * 0.03;
     const dtiRatio = income > 0 ? ((monthlyDebtService / income) * 100) : 50;
 
-    // Mathematical logistic regression score calculation
     let baseScore = 720;
-    
-    // DTI Impact
     if (dtiRatio > 45) baseScore -= 110;
     else if (dtiRatio > 35) baseScore -= 60;
     else if (dtiRatio < 25) baseScore += 40;
 
-    // Payment History Impact
     if (paymentHistoryScore >= 90) baseScore += 50;
     else if (paymentHistoryScore < 70) baseScore -= 90;
 
-    // Missed Payments Penalty
     baseScore -= (missedPayments * 45);
 
-    // Credit History Bonus
     if (creditHistoryMonths > 48) baseScore += 35;
     else if (creditHistoryMonths < 12) baseScore -= 40;
 
-    // Clamp score to 300 - 850 range
     const creditScore = Math.max(300, Math.min(850, Math.round(baseScore)));
     const probDefault = Math.max(0.5, Math.min(99.0, Math.round((1 - (creditScore - 300) / 550) * 100 * 10) / 10));
 
@@ -758,28 +985,30 @@ export async function apiFetch(endpoint, options = {}) {
     };
 
     try {
-      localStorage.setItem('riskguard_local_credit_risk', JSON.stringify(result.creditRisk));
+      localStorage.setItem(creditKey, JSON.stringify(result.creditRisk));
     } catch (err) {}
     return result;
   }
 
   if (cleanEp === '/alerts') {
     const activeSettings = getSavedSettings();
-    let prof = { monthly_net_income: 75000, monthly_debt_payments: 12000, essential_expenses: 30000, discretionary_expenses: 15000, liquid_savings: 100000, emergency_fund: 180000 };
+    let prof = { monthly_net_income: 0, monthly_debt_payments: 0, essential_expenses: 0, discretionary_expenses: 0, liquid_savings: 0, emergency_fund: 0 };
+    const profileCacheKey = userId ? `riskguard_profile_${userId}` : 'riskguard_guest_profile';
+
     if (userId && isSupabaseConfigured()) {
       const { data } = await supabase.from('financial_profiles').select('*').eq('user_id', userId).maybeSingle();
       if (data) prof = data;
     } else {
-      const cached = localStorage.getItem('riskguard_local_profile');
+      const cached = localStorage.getItem(profileCacheKey);
       if (cached) {
         try { prof = JSON.parse(cached); } catch (err) {}
       }
     }
 
-    const income = Number(prof.monthly_net_income || 0);
-    const debt = Number(prof.monthly_debt_payments || 0);
-    const essential = Number(prof.essential_expenses || 0);
-    const emergencyFund = Number(prof.emergency_fund || prof.liquid_savings || 0);
+    const income = Number(prof.monthly_net_income ?? prof.monthly_income ?? 0);
+    const debt = Number(prof.monthly_debt_payments ?? prof.monthly_debt_payment ?? 0);
+    const essential = Number(prof.essential_expenses ?? prof.monthly_essential_expenses ?? 0);
+    const emergencyFund = Number(prof.emergency_fund ?? prof.liquid_savings ?? prof.existing_savings ?? 0);
 
     const dtiRatio = income > 0 ? Number(((debt / income) * 100).toFixed(1)) : 0;
     const emergencyCoverageMonths = essential > 0 ? Number((emergencyFund / essential).toFixed(1)) : 0;
@@ -816,7 +1045,7 @@ export async function apiFetch(endpoint, options = {}) {
     if (activeSettings.alertVarVolatility !== false) {
       let invs = [];
       if (userId && isSupabaseConfigured()) {
-        const { data } = await supabase.from('portfolio_holdings').select('*');
+        const { data } = await supabase.from('portfolio_holdings').select('*').eq('user_id', userId);
         if (data) invs = data;
       }
       const hasCrypto = invs.some(i => (i.asset_type || '').toLowerCase().includes('crypto'));
@@ -858,16 +1087,17 @@ export async function apiFetch(endpoint, options = {}) {
     const addSavings = Number(requestBody.additionalSavings || 0);
     const emgSavingsChange = Number(requestBody.emergencySavingsChange || 0);
 
-    let prof = { monthly_net_income: 75000, monthly_debt_payments: 12000, essential_expenses: 30000, discretionary_expenses: 15000, liquid_savings: 100000, emergency_fund: 180000 };
+    let prof = { monthly_net_income: 0, monthly_debt_payments: 0, essential_expenses: 0, discretionary_expenses: 0, liquid_savings: 0, emergency_fund: 0 };
     let exps = [], dts = [], invs = [], gls = [];
+    const profileCacheKey = userId ? `riskguard_profile_${userId}` : 'riskguard_guest_profile';
 
     if (userId && isSupabaseConfigured()) {
       const [pRes, eRes, dRes, iRes, gRes] = await Promise.all([
         supabase.from('financial_profiles').select('*').eq('user_id', userId).maybeSingle(),
-        supabase.from('expenses').select('*'),
-        supabase.from('debts').select('*'),
-        supabase.from('portfolio_holdings').select('*'),
-        supabase.from('financial_goals').select('*')
+        supabase.from('expenses').select('*').eq('user_id', userId),
+        supabase.from('debts').select('*').eq('user_id', userId),
+        supabase.from('portfolio_holdings').select('*').eq('user_id', userId),
+        supabase.from('financial_goals').select('*').eq('user_id', userId)
       ]);
       if (pRes.data) prof = pRes.data;
       if (eRes.data) exps = eRes.data;
@@ -875,7 +1105,7 @@ export async function apiFetch(endpoint, options = {}) {
       if (iRes.data) invs = iRes.data;
       if (gRes.data) gls = gRes.data;
     } else {
-      const cached = localStorage.getItem('riskguard_local_profile');
+      const cached = localStorage.getItem(profileCacheKey);
       if (cached) {
         try { prof = JSON.parse(cached); } catch (err) {}
       }
@@ -885,12 +1115,12 @@ export async function apiFetch(endpoint, options = {}) {
     const baselineAssessment = calculatePersonalRiskMetrics(prof, exps, dts, invs, gls);
 
     // Real Simulated Profile
-    const baseInc = Number(prof.monthly_net_income || 0);
-    const baseEss = Number(prof.essential_expenses || 0);
-    const baseDisc = Number(prof.discretionary_expenses || 0);
-    const baseDebt = Number(prof.monthly_debt_payments || 0);
-    const baseSav = Number(prof.liquid_savings || 0);
-    const baseEmg = Number(prof.emergency_fund || 0);
+    const baseInc = Number(prof.monthly_net_income ?? prof.monthly_income ?? 0);
+    const baseEss = Number(prof.essential_expenses ?? prof.monthly_essential_expenses ?? 0);
+    const baseDisc = Number(prof.discretionary_expenses ?? prof.monthly_discretionary_expenses ?? 0);
+    const baseDebt = Number(prof.monthly_debt_payments ?? prof.monthly_debt_payment ?? 0);
+    const baseSav = Number(prof.liquid_savings ?? prof.existing_savings ?? 0);
+    const baseEmg = Number(prof.emergency_fund ?? 0);
 
     const simProf = {
       ...prof,

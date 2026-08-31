@@ -89,7 +89,8 @@ export function Debt() {
         });
       }
       setModalOpen(false);
-      loadData();
+      await loadData();
+      window.dispatchEvent(new CustomEvent('debtUpdated'));
     } catch (err) {
       alert(err.message || 'Failed to save debt item');
     }
@@ -99,7 +100,8 @@ export function Debt() {
     if (!confirm('Are you sure you want to delete this debt record?')) return;
     try {
       await apiFetch(`/debts/${id}`, { method: 'DELETE' });
-      loadData();
+      await loadData();
+      window.dispatchEvent(new CustomEvent('debtUpdated'));
     } catch (err) {
       alert('Failed to delete debt item');
     }
