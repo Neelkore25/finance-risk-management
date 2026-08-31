@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+
+const GOOGLE_CLIENT_ID = 
+  import.meta.env.VITE_GOOGLE_CLIENT_ID || 
+  '146655864682-1pbmqo9padrgtd07r57l13vu2c6kjhe2.apps.googleusercontent.com';
 
 function GoogleIcon({ className = "w-4 h-4" }) {
   return (
@@ -26,7 +30,7 @@ function GoogleIcon({ className = "w-4 h-4" }) {
 }
 
 export function AuthModal({ isOpen = true }) {
-  const { googleLogin } = useAuth();
+  const { googleLogin, signInWithGoogleIdToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '', type: 'ok' });
 
@@ -35,18 +39,53 @@ export function AuthModal({ isOpen = true }) {
     setTimeout(() => setToast({ show: false, msg: '', type: 'ok' }), 5000);
   };
 
+  // Initialize Google Identity Services (GIS) on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: async (response) => {
+            if (response.credential) {
+              setLoading(true);
+              try {
+                showToastMsg('Authenticating with Google...', 'ok');
+                await signInWithGoogleIdToken(response.credential);
+              } catch (err) {
+                showToastMsg(err.message || 'Google authentication failed.', 'error');
+              } finally {
+                setLoading(false);
+              }
+            }
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+      } catch (e) {
+        // Fallback to standard OAuth
+      }
+    }
+  }, [signInWithGoogleIdToken]);
+
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      showToastMsg('Connecting to Google Account...', 'ok');
-      await googleLogin();
+      if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+        window.google.accounts.id.prompt(async (notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            // Fallback to OAuth redirect if popup was suppressed
+            await googleLogin();
+          }
+        });
+      } else {
+        await googleLogin();
+      }
     } catch (err) {
       if (err.message?.includes('provider is not enabled') || err.message?.includes('validation_failed')) {
         showToastMsg('Google provider is not enabled in Supabase Dashboard. Under Authentication -> Providers -> Google, toggle it ON.', 'error');
       } else {
         showToastMsg(err.message || 'Google sign in failed. Please try again.', 'error');
       }
-    } finally {
       setLoading(false);
     }
   };

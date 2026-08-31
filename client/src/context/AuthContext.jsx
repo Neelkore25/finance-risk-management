@@ -131,6 +131,23 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const signInWithGoogleIdToken = async (idToken) => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase Auth is not configured.');
+    }
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token: idToken
+    });
+    if (error) throw error;
+    if (data.user) {
+      setUser(data.user);
+      const profile = await fetchUserProfile(data.user.id);
+      setUserProfile(profile);
+    }
+    return data;
+  };
+
   const resetPassword = async (email) => {
     const cleanEmail = email.trim().toLowerCase();
     if (!isSupabaseConfigured()) {
@@ -167,6 +184,7 @@ export function AuthProvider({ children }) {
         loading,
         login,
         googleLogin,
+        signInWithGoogleIdToken,
         register,
         resetPassword,
         logout,
