@@ -7,25 +7,47 @@ export function RiskHistory() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadHistory() {
-      try {
-        const res = await apiFetch('/risk/history');
-        setHistory(res.history || []);
-      } catch (err) {
-        console.error('Failed to load risk history:', err);
-      } finally {
-        setLoading(false);
-      }
+  async function loadHistory() {
+    try {
+      // First ensure the latest personal risk assessment has logged a fresh snapshot
+      await apiFetch('/risk/personal');
+      const res = await apiFetch('/risk/history');
+      setHistory(res.history || []);
+    } catch (err) {
+      console.error('Failed to load risk history:', err);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     loadHistory();
+
+    window.addEventListener('profileUpdated', loadHistory);
+    window.addEventListener('expensesUpdated', loadHistory);
+    window.addEventListener('debtUpdated', loadHistory);
+    window.addEventListener('portfolioUpdated', loadHistory);
+    window.addEventListener('goalsUpdated', loadHistory);
+    window.addEventListener('settingsUpdated', loadHistory);
+
+    return () => {
+      window.removeEventListener('profileUpdated', loadHistory);
+      window.removeEventListener('expensesUpdated', loadHistory);
+      window.removeEventListener('debtUpdated', loadHistory);
+      window.removeEventListener('portfolioUpdated', loadHistory);
+      window.removeEventListener('goalsUpdated', loadHistory);
+      window.removeEventListener('settingsUpdated', loadHistory);
+    };
   }, []);
 
   if (loading) {
-    return <div className="p-8 text-center text-xs text-slate-400">Loading Risk Assessment Log...</div>;
+    return <div className="p-8 text-center text-xs text-slate-400">Loading Real-Time Risk Assessment Log...</div>;
   }
 
-  const chartData = history.map(item => ({
+  const sortedAsc = [...history].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
+  const sortedDesc = [...history].sort((a, b) => new Date(b.recorded_at) - new Date(a.recorded_at));
+
+  const chartData = sortedAsc.map(item => ({
     date: new Date(item.recorded_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
     score: item.overall_score
   }));
@@ -34,9 +56,9 @@ export function RiskHistory() {
   let trendStatus = 'Stable';
   let trendIcon = <Minus className="w-4 h-4 text-slate-400" />;
 
-  if (history.length >= 2) {
-    const latest = history[history.length - 1].overall_score;
-    const previous = history[history.length - 2].overall_score;
+  if (sortedAsc.length >= 2) {
+    const latest = sortedAsc[sortedAsc.length - 1].overall_score;
+    const previous = sortedAsc[sortedAsc.length - 2].overall_score;
     if (latest < previous) {
       trendStatus = 'Improving (Risk Score Decreasing)';
       trendIcon = <TrendingDown className="w-4 h-4 text-emerald-500" />;
@@ -94,12 +116,20 @@ export function RiskHistory() {
 
       {/* History Log Table */}
       <div className="opaque-card space-y-4">
-        <h2 className="text-sm font-bold text-slate-900 dark:text-white">Historical Assessment Records</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white">Historical Assessment Records</h2>
+          <button
+            onClick={loadHistory}
+            className="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1.5 shadow"
+          >
+            Capture Fresh Snapshot
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-800 dark:text-slate-200">
             <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">
               <tr>
-                <th className="p-3">Assessment Date</th>
+                <th className="p-3">Assessment Date & Time</th>
                 <th className="p-3 text-center">Overall Score</th>
                 <th className="p-3 text-center">Debt Risk</th>
                 <th className="p-3 text-center">Liquidity Risk</th>
@@ -110,12 +140,12 @@ export function RiskHistory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {history.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-950 transition-colors">
+              {sortedDesc.map((item, idx) => (
+                <tr key={item.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-950 transition-colors">
                   <td className="p-3 font-semibold text-slate-900 dark:text-white">
-                    {new Date(item.recorded_at).toLocaleString()}
+                    {new Date(item.recorded_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                   </td>
-                  <td className="p-3 text-center font-extrabold text-sky-500">{item.overall_score}</td>
+                  <td className="p-3 text-center font-extrabold text-sky-500">{item.overall_score}/100</td>
                   <td className="p-3 text-center">{item.debt_risk}</td>
                   <td className="p-3 text-center">{item.liquidity_risk}</td>
                   <td className="p-3 text-center">{item.emergency_fund_risk}</td>

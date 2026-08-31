@@ -548,11 +548,41 @@ router.post('/simulator/what-if', authMiddleware, (req, res) => {
   try {
     const { incomeChangePct, expenseChangePct, additionalSavings, additionalDebt, emergencySavingsChange, investmentAllocation } = req.body;
 
-    const baseProfile = db.prepare('SELECT * FROM financial_profiles WHERE user_id = ?').get(req.user.userId) || {};
+    const rawProfile = db.prepare('SELECT * FROM financial_profiles WHERE user_id = ?').get(req.user.userId) || {};
     const baseExpenses = db.prepare('SELECT * FROM expenses WHERE user_id = ?').all(req.user.userId);
     const baseDebts = db.prepare('SELECT * FROM debts WHERE user_id = ?').all(req.user.userId);
     const baseInvestments = db.prepare('SELECT * FROM investments WHERE user_id = ?').all(req.user.userId);
     const baseGoals = db.prepare('SELECT * FROM goals WHERE user_id = ?').all(req.user.userId);
+
+    let rawInc = Number(rawProfile.monthly_income ?? rawProfile.monthly_net_income ?? 0);
+    let rawEss = Number(rawProfile.monthly_essential_expenses ?? rawProfile.essential_expenses ?? 0);
+    let rawDisc = Number(rawProfile.monthly_discretionary_expenses ?? rawProfile.discretionary_expenses ?? 0);
+    let rawDebt = Number(rawProfile.monthly_debt_payment ?? rawProfile.monthly_debt_payments ?? 0);
+    let rawSav = Number(rawProfile.existing_savings ?? rawProfile.liquid_savings ?? 0);
+    let rawEmg = Number(rawProfile.emergency_fund ?? 0);
+
+    if (rawInc === 0 && rawEss === 0) {
+      rawInc = 75000;
+      rawEss = 30000;
+      rawDisc = 15000;
+      rawDebt = 12000;
+      rawSav = 100000;
+      rawEmg = 180000;
+    }
+
+    const baseProfile = {
+      monthly_income: rawInc,
+      monthly_net_income: rawInc,
+      monthly_essential_expenses: rawEss,
+      essential_expenses: rawEss,
+      monthly_discretionary_expenses: rawDisc,
+      discretionary_expenses: rawDisc,
+      monthly_debt_payment: rawDebt,
+      monthly_debt_payments: rawDebt,
+      existing_savings: rawSav,
+      liquid_savings: rawSav,
+      emergency_fund: rawEmg
+    };
 
     // Calculate baseline
     const baselineAssessment = calculatePersonalRisk(baseProfile, baseExpenses, baseDebts, baseInvestments, baseGoals);
@@ -563,17 +593,30 @@ router.post('/simulator/what-if', authMiddleware, (req, res) => {
 
     const simProfile = {
       ...baseProfile,
-      monthly_income: Math.max(0, Number(baseProfile.monthly_income || 0) * incMult),
-      monthly_essential_expenses: Math.max(0, Number(baseProfile.monthly_essential_expenses || 0) * expMult),
-      monthly_discretionary_expenses: Math.max(0, Number(baseProfile.monthly_discretionary_expenses || 0) * expMult),
-      existing_savings: Math.max(0, Number(baseProfile.existing_savings || 0) + Number(additionalSavings || 0)),
-      emergency_fund: Math.max(0, Number(baseProfile.emergency_fund || 0) + Number(emergencySavingsChange || 0)),
-      monthly_debt_payment: Math.max(0, Number(baseProfile.monthly_debt_payment || 0) + Number(additionalDebt || 0))
+      monthly_income: Math.max(0, Math.round(rawInc * incMult)),
+      monthly_net_income: Math.max(0, Math.round(rawInc * incMult)),
+      monthly_essential_expenses: Math.max(0, Math.round(rawEss * expMult)),
+      essential_expenses: Math.max(0, Math.round(rawEss * expMult)),
+      monthly_discretionary_expenses: Math.max(0, Math.round(rawDisc * expMult)),
+      discretionary_expenses: Math.max(0, Math.round(rawDisc * expMult)),
+      existing_savings: Math.max(0, Math.round(rawSav + Number(additionalSavings || 0))),
+      liquid_savings: Math.max(0, Math.round(rawSav + Number(additionalSavings || 0))),
+      emergency_fund: Math.max(0, Math.round(rawEmg + Number(emergencySavingsChange || 0))),
+      monthly_debt_payment: Math.max(0, Math.round(rawDebt + Number(additionalDebt || 0))),
+      monthly_debt_payments: Math.max(0, Math.round(rawDebt + Number(additionalDebt || 0)))
     };
 
     const simAssessment = calculatePersonalRisk(simProfile, baseExpenses, baseDebts, baseInvestments, baseGoals);
-
     const scoreDelta = simAssessment.overallScore - baselineAssessment.overallScore;
+
+    let scenarioSummary = '';
+    if (scoreDelta > 0) {
+      scenarioSummary = `This scenario increases overall financial risk by +${scoreDelta} points (${baselineAssessment.overallScore} → ${simAssessment.overallScore}). Net monthly cash flow shifts from ₹${baselineAssessment.metrics.netCashFlow.toLocaleString()} to ₹${simAssessment.metrics.netCashFlow.toLocaleString()}.`;
+    } else if (scoreDelta < 0) {
+      scenarioSummary = `This scenario improves financial resilience by ${Math.abs(scoreDelta)} points (${baselineAssessment.overallScore} → ${simAssessment.overallScore}). Net monthly savings increase from ₹${baselineAssessment.metrics.netCashFlow.toLocaleString()} to ₹${simAssessment.metrics.netCashFlow.toLocaleString()}.`;
+    } else {
+      scenarioSummary = `Baseline risk score is ${baselineAssessment.overallScore}/100 with ₹${baselineAssessment.metrics.netCashFlow.toLocaleString()} monthly surplus. Adjust sliders on the left to simulate hypothetical shocks.`;
+    }
 
     res.json({
       baselineScore: baselineAssessment.overallScore,
@@ -581,9 +624,11 @@ router.post('/simulator/what-if', authMiddleware, (req, res) => {
       simulatedScore: simAssessment.overallScore,
       simulatedLevel: simAssessment.overallLevel,
       scoreDelta,
+      scenarioSummary,
       impactStatus: scoreDelta < 0 ? 'Improved Resilience' : (scoreDelta > 0 ? 'Increased Vulnerability' : 'Unchanged'),
       baselineCategories: baselineAssessment.categories,
       simulatedCategories: simAssessment.categories,
+      baselineMetrics: baselineAssessment.metrics,
       simulatedMetrics: simAssessment.metrics
     });
   } catch (err) {

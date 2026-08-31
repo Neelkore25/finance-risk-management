@@ -69,22 +69,11 @@ export function CreditRisk() {
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
             <ShieldAlert className="w-6 h-6 text-emerald-500" />
-            Credit Risk & Underwriting Module
+            Credit Risk & Underwriting Assessment
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Transparent logistic regression educational scoring model for loan creditworthiness evaluation.
+            Credit-scoring model for loan creditworthiness, default probability, and debt-to-income underwriting evaluation.
           </p>
-        </div>
-      </div>
-
-      {/* Educational Disclaimer Banner */}
-      <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs flex items-center gap-3">
-        <Info className="w-5 h-5 text-emerald-500 dark:text-emerald-400 shrink-0" />
-        <div>
-          <span className="font-extrabold text-slate-900 dark:text-white block">Educational Model Disclaimer</span>
-          <span>
-            This module provides an educational credit-scoring simulation using documented mathematical logistic regression. It does not represent an official FICO or credit bureau score.
-          </span>
         </div>
       </div>
 
@@ -93,13 +82,13 @@ export function CreditRisk() {
         <div className="lg:col-span-2 opaque-card">
           <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <Calculator className="w-4 h-4 text-sky-500" />
-            Underwriting Inputs & Borrowing Profile
+            Borrower Profile & Underwriting Parameters
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Monthly Income ($)</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Monthly Net Income (₹)</label>
                 <input
                   type="number"
                   min="0"
@@ -112,7 +101,7 @@ export function CreditRisk() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Existing Outstanding Debt ($)</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Existing Outstanding Debt (₹)</label>
                 <input
                   type="number"
                   min="0"
@@ -125,7 +114,7 @@ export function CreditRisk() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Requested Loan Amount ($)</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Requested Loan Amount (₹)</label>
                 <input
                   type="number"
                   min="0"

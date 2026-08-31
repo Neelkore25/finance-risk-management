@@ -29,14 +29,16 @@ export function Settings() {
     setTimeout(() => setToastMsg(''), 2500);
   };
 
-  const handleForceReSync = () => {
+  const handleClearCache = () => {
     try {
-      localStorage.removeItem('riskguard_users_db');
-      localStorage.removeItem('riskguard_local_profile');
-      localStorage.removeItem('riskguard_local_expenses');
-      localStorage.removeItem('riskguard_local_debts');
-      localStorage.removeItem('riskguard_local_holdings');
-      localStorage.removeItem('riskguard_local_goals');
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('riskguard_') || k.startsWith('risk_'))) {
+          if (k !== 'risk_platform_settings') keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
       window.dispatchEvent(new CustomEvent('profileUpdated'));
       window.dispatchEvent(new CustomEvent('expensesUpdated'));
       window.dispatchEvent(new CustomEvent('debtUpdated'));
@@ -44,11 +46,11 @@ export function Settings() {
       window.dispatchEvent(new CustomEvent('goalsUpdated'));
       window.dispatchEvent(new CustomEvent('settingsUpdated'));
       setToastType('ok');
-      setToastMsg('Supabase state re-synchronized cleanly.');
+      setToastMsg('Local browser cache cleared successfully.');
       setTimeout(() => setToastMsg(''), 2500);
     } catch (err) {
       setToastType('error');
-      setToastMsg('Re-sync failed.');
+      setToastMsg('Failed to clear cache.');
     }
   };
 
@@ -294,31 +296,26 @@ export function Settings() {
           </div>
         </div>
 
-        {/* SECTION D: SYSTEM HEALTH & SUPABASE SYNC */}
+        {/* SECTION D: DATA CACHE & SYSTEM PREFERENCES */}
         <div className="opaque-card space-y-4">
           <div className="flex items-center gap-2 text-sky-500 font-bold text-xs uppercase tracking-wider">
             <Database className="w-4 h-4" />
-            Section D: System Health & Database Sync
+            Section D: Data Management & Reset
           </div>
 
           <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                Database Engine Status
-              </span>
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 font-extrabold text-[10px] border border-emerald-500/20">
-                {isSupabaseConfigured() ? 'Supabase RLS DB • Connected' : 'Local Sandbox Engine Active'}
-              </span>
-            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Clear temporary offline cache data or restore default risk thresholds across all modules.
+            </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                onClick={handleForceReSync}
+                onClick={handleClearCache}
                 className="w-full py-2.5 px-3 bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-1.5"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                Force Re-Sync Supabase
+                Clear Local Cache
               </button>
 
               <button

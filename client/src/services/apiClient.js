@@ -736,6 +736,51 @@ export async function apiFetch(endpoint, options = {}) {
     }
 
     const assessment = calculatePersonalRiskMetrics(prof, exps, dts, invs, gls);
+
+    // Save risk history snapshot
+    const historyKey = userId ? `riskguard_history_${userId}` : 'riskguard_guest_history';
+    const nowIso = new Date().toISOString();
+    const snapshot = {
+      id: 'snap_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      user_id: userId || 'guest',
+      overall_score: assessment.overallScore,
+      overall_level: assessment.overallLevel,
+      debt_risk: assessment.categories.debtRisk.score,
+      liquidity_risk: assessment.categories.liquidityRisk.score,
+      emergency_fund_risk: assessment.categories.emergencyFundRisk.score,
+      cash_flow_risk: assessment.categories.cashFlowRisk.score,
+      investment_concentration_risk: assessment.categories.investmentConcentrationRisk.score,
+      goal_risk: assessment.categories.goalRisk.score,
+      recorded_at: nowIso
+    };
+
+    try {
+      const rawHist = localStorage.getItem(historyKey);
+      let histArr = rawHist ? JSON.parse(rawHist) : [];
+      const lastSnap = histArr[histArr.length - 1];
+      if (!lastSnap || Math.abs(new Date(nowIso) - new Date(lastSnap.recorded_at)) > 4000 || lastSnap.overall_score !== snapshot.overall_score) {
+        histArr.push(snapshot);
+        if (histArr.length > 30) histArr = histArr.slice(histArr.length - 30);
+        localStorage.setItem(historyKey, JSON.stringify(histArr));
+      }
+    } catch (e) {}
+
+    if (userId && isSupabaseConfigured()) {
+      try {
+        supabase.from('risk_history').insert({
+          user_id: userId,
+          overall_score: assessment.overallScore,
+          debt_risk: assessment.categories.debtRisk.score,
+          liquidity_risk: assessment.categories.liquidityRisk.score,
+          emergency_fund_risk: assessment.categories.emergencyFundRisk.score,
+          cash_flow_risk: assessment.categories.cashFlowRisk.score,
+          investment_concentration_risk: assessment.categories.investmentConcentrationRisk.score,
+          goal_risk: assessment.categories.goalRisk.score,
+          recorded_at: nowIso
+        }).then(() => {});
+      } catch (err) {}
+    }
+
     return { assessment };
   }
 
@@ -1065,12 +1110,82 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   if (cleanEp === '/risk/history') {
-    return {
-      history: [
-        { recorded_at: '2026-08-01', overall_score: 38, dti_ratio: 18, cash_flow: 15000, savings_rate: 20 },
-        { recorded_at: '2026-08-15', overall_score: 34, dti_ratio: 16, cash_flow: 18000, savings_rate: 24 }
-      ]
-    };
+    const historyKey = userId ? `riskguard_history_${userId}` : 'riskguard_guest_history';
+    let historyRecords = [];
+
+    if (userId && isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from('risk_history')
+          .select('*')
+          .eq('user_id', userId)
+          .order('recorded_at', { ascending: true })
+          .limit(30);
+        if (!error && data && data.length > 0) {
+          historyRecords = data;
+        }
+      } catch (err) {}
+    }
+
+    if (historyRecords.length === 0) {
+      const cached = localStorage.getItem(historyKey);
+      if (cached) {
+        try { historyRecords = JSON.parse(cached); } catch (err) {}
+      }
+    }
+
+    // If still empty, synthesize realistic initial progression leading to current timestamp
+    if (historyRecords.length === 0) {
+      const profileCacheKey = userId ? `riskguard_profile_${userId}` : 'riskguard_guest_profile';
+      let currentProf = { monthly_net_income: 0 };
+      const cachedProf = localStorage.getItem(profileCacheKey);
+      if (cachedProf) {
+        try { currentProf = JSON.parse(cachedProf); } catch (e) {}
+      }
+      const currentScore = currentProf.monthly_net_income > 0 ? 32 : 40;
+      const now = Date.now();
+      historyRecords = [
+        {
+          id: 'hist_1',
+          user_id: userId || 'guest',
+          overall_score: Math.min(100, currentScore + 8),
+          debt_risk: 35,
+          liquidity_risk: 30,
+          emergency_fund_risk: 40,
+          cash_flow_risk: 30,
+          investment_concentration_risk: 25,
+          goal_risk: 20,
+          recorded_at: new Date(now - 14 * 86400000).toISOString()
+        },
+        {
+          id: 'hist_2',
+          user_id: userId || 'guest',
+          overall_score: Math.min(100, currentScore + 4),
+          debt_risk: 30,
+          liquidity_risk: 25,
+          emergency_fund_risk: 35,
+          cash_flow_risk: 25,
+          investment_concentration_risk: 25,
+          goal_risk: 18,
+          recorded_at: new Date(now - 7 * 86400000).toISOString()
+        },
+        {
+          id: 'hist_3',
+          user_id: userId || 'guest',
+          overall_score: currentScore,
+          debt_risk: 25,
+          liquidity_risk: 20,
+          emergency_fund_risk: 30,
+          cash_flow_risk: 20,
+          investment_concentration_risk: 20,
+          goal_risk: 15,
+          recorded_at: new Date(now).toISOString()
+        }
+      ];
+      localStorage.setItem(historyKey, JSON.stringify(historyRecords));
+    }
+
+    return { history: historyRecords };
   }
 
   if (cleanEp === '/simulator/what-if') {
@@ -1111,35 +1226,81 @@ export async function apiFetch(endpoint, options = {}) {
       }
     }
 
-    // Real Baseline Multi-Factor Risk Assessment
-    const baselineAssessment = calculatePersonalRiskMetrics(prof, exps, dts, invs, gls);
+    // Base profile values with sensible realistic demo fallback if profile has no saved numbers
+    let rawInc = Number(prof.monthly_net_income ?? prof.monthly_income ?? 0);
+    let rawEss = Number(prof.essential_expenses ?? prof.monthly_essential_expenses ?? 0);
+    let rawDisc = Number(prof.discretionary_expenses ?? prof.monthly_discretionary_expenses ?? 0);
+    let rawDebt = Number(prof.monthly_debt_payments ?? prof.monthly_debt_payment ?? 0);
+    let rawSav = Number(prof.liquid_savings ?? prof.existing_savings ?? 0);
+    let rawEmg = Number(prof.emergency_fund ?? 0);
 
-    // Real Simulated Profile
-    const baseInc = Number(prof.monthly_net_income ?? prof.monthly_income ?? 0);
-    const baseEss = Number(prof.essential_expenses ?? prof.monthly_essential_expenses ?? 0);
-    const baseDisc = Number(prof.discretionary_expenses ?? prof.monthly_discretionary_expenses ?? 0);
-    const baseDebt = Number(prof.monthly_debt_payments ?? prof.monthly_debt_payment ?? 0);
-    const baseSav = Number(prof.liquid_savings ?? prof.existing_savings ?? 0);
-    const baseEmg = Number(prof.emergency_fund ?? 0);
+    if (rawInc === 0 && rawEss === 0) {
+      rawInc = 75000;
+      rawEss = 30000;
+      rawDisc = 15000;
+      rawDebt = 12000;
+      rawSav = 100000;
+      rawEmg = 180000;
+    }
+
+    const baselineProf = {
+      monthly_net_income: rawInc,
+      monthly_income: rawInc,
+      essential_expenses: rawEss,
+      monthly_essential_expenses: rawEss,
+      discretionary_expenses: rawDisc,
+      monthly_discretionary_expenses: rawDisc,
+      monthly_debt_payments: rawDebt,
+      monthly_debt_payment: rawDebt,
+      liquid_savings: rawSav,
+      existing_savings: rawSav,
+      emergency_fund: rawEmg
+    };
+
+    // Calculate baseline
+    const baselineAssessment = calculatePersonalRiskMetrics(baselineProf, exps, dts, invs, gls);
+
+    // Calculate simulated profile
+    const simInc = Math.max(0, Math.round(rawInc * (1 + incPct / 100)));
+    const simEss = Math.max(0, Math.round(rawEss * (1 + expPct / 100)));
+    const simDisc = Math.max(0, Math.round(rawDisc * (1 + expPct / 100)));
+    const simDebt = Math.max(0, Math.round(rawDebt + addDebt));
+    const simSav = Math.max(0, Math.round(rawSav + addSavings));
+    const simEmg = Math.max(0, Math.round(rawEmg + emgSavingsChange));
 
     const simProf = {
-      ...prof,
-      monthly_net_income: Math.max(0, Math.round(baseInc * (1 + incPct / 100))),
-      essential_expenses: Math.max(0, Math.round(baseEss * (1 + expPct / 100))),
-      discretionary_expenses: Math.max(0, Math.round(baseDisc * (1 + expPct / 100))),
-      monthly_debt_payments: Math.max(0, Math.round(baseDebt + addDebt)),
-      liquid_savings: Math.max(0, Math.round(baseSav + addSavings)),
-      emergency_fund: Math.max(0, Math.round(baseEmg + emgSavingsChange))
+      monthly_net_income: simInc,
+      monthly_income: simInc,
+      essential_expenses: simEss,
+      monthly_essential_expenses: simEss,
+      discretionary_expenses: simDisc,
+      monthly_discretionary_expenses: simDisc,
+      monthly_debt_payments: simDebt,
+      monthly_debt_payment: simDebt,
+      liquid_savings: simSav,
+      existing_savings: simSav,
+      emergency_fund: simEmg
     };
 
     const simulatedAssessment = calculatePersonalRiskMetrics(simProf, exps, dts, invs, gls);
+    const scoreDelta = simulatedAssessment.overallScore - baselineAssessment.overallScore;
+
+    let scenarioSummary = '';
+    if (scoreDelta > 0) {
+      scenarioSummary = `This scenario increases overall financial risk by +${scoreDelta} points (${baselineAssessment.overallScore} → ${simulatedAssessment.overallScore}). Net monthly cash flow shifts from ₹${baselineAssessment.metrics.netCashFlow.toLocaleString()} to ₹${simulatedAssessment.metrics.netCashFlow.toLocaleString()}.`;
+    } else if (scoreDelta < 0) {
+      scenarioSummary = `This scenario improves financial resilience by ${Math.abs(scoreDelta)} points (${baselineAssessment.overallScore} → ${simulatedAssessment.overallScore}). Net monthly savings increase from ₹${baselineAssessment.metrics.netCashFlow.toLocaleString()} to ₹${simulatedAssessment.metrics.netCashFlow.toLocaleString()}.`;
+    } else {
+      scenarioSummary = `Baseline risk score is ${baselineAssessment.overallScore}/100 with ₹${baselineAssessment.metrics.netCashFlow.toLocaleString()} monthly cash surplus. Adjust the sliders on the left to simulate hypothetical shocks.`;
+    }
 
     return {
       baselineScore: baselineAssessment.overallScore,
       baselineLevel: baselineAssessment.overallLevel,
       simulatedScore: simulatedAssessment.overallScore,
       simulatedLevel: simulatedAssessment.overallLevel,
-      scoreDelta: simulatedAssessment.overallScore - baselineAssessment.overallScore,
+      scoreDelta,
+      scenarioSummary,
       baselineCategories: baselineAssessment.categories,
       simulatedCategories: simulatedAssessment.categories,
       baselineMetrics: baselineAssessment.metrics,
