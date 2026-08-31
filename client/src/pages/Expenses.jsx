@@ -276,7 +276,8 @@ export function Expenses() {
                 min="0"
                 required
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value.replace(/^0+(?=\d)/, '') })}
                 placeholder="0.00"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               />

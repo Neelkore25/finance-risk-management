@@ -407,7 +407,8 @@ export function Investments() {
                 min="0"
                 required
                 value={formData.quantity}
-                onChange={(e) => handlePriceChange(e.target.value, formData.current_price)}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => handlePriceChange(e.target.value.replace(/^0+(?=\d)/, ''), formData.current_price)}
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               />
             </div>
@@ -420,7 +421,8 @@ export function Investments() {
                 min="0"
                 required
                 value={formData.current_price}
-                onChange={(e) => handlePriceChange(formData.quantity, e.target.value)}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => handlePriceChange(formData.quantity, e.target.value.replace(/^0+(?=\d)/, ''))}
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               />
             </div>
@@ -433,7 +435,8 @@ export function Investments() {
                 min="0"
                 required
                 value={formData.amount_value}
-                onChange={(e) => setFormData({ ...formData, amount_value: e.target.value })}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setFormData({ ...formData, amount_value: e.target.value.replace(/^0+(?=\d)/, '') })}
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               />
             </div>

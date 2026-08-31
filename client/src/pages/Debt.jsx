@@ -256,7 +256,8 @@ export function Debt() {
                 min="0"
                 required
                 value={formData.outstanding_amount}
-                onChange={(e) => setFormData({ ...formData, outstanding_amount: e.target.value })}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setFormData({ ...formData, outstanding_amount: e.target.value.replace(/^0+(?=\d)/, '') })}
                 placeholder="0.00"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               />
@@ -271,7 +272,8 @@ export function Debt() {
                 step="0.1"
                 min="0"
                 value={formData.interest_rate}
-                onChange={(e) => setFormData({ ...formData, interest_rate: e.target.value })}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setFormData({ ...formData, interest_rate: e.target.value.replace(/^0+(?=\d)/, '') })}
                 placeholder="18.5"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               />
@@ -284,7 +286,8 @@ export function Debt() {
                 step="0.01"
                 min="0"
                 value={formData.monthly_payment}
-                onChange={(e) => setFormData({ ...formData, monthly_payment: e.target.value })}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setFormData({ ...formData, monthly_payment: e.target.value.replace(/^0+(?=\d)/, '') })}
                 placeholder="150"
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               />

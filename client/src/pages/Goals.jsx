@@ -211,7 +211,8 @@ export function Goals() {
                 min="0"
                 required
                 value={formData.target_amount}
-                onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setFormData({ ...formData, target_amount: e.target.value.replace(/^0+(?=\d)/, '') })}
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
               />
             </div>
@@ -222,7 +223,8 @@ export function Goals() {
                 type="number"
                 min="0"
                 value={formData.current_amount}
-                onChange={(e) => setFormData({ ...formData, current_amount: e.target.value })}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setFormData({ ...formData, current_amount: e.target.value.replace(/^0+(?=\d)/, '') })}
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
               />
             </div>
@@ -246,7 +248,8 @@ export function Goals() {
                 type="number"
                 min="0"
                 value={formData.monthly_contribution}
-                onChange={(e) => setFormData({ ...formData, monthly_contribution: e.target.value })}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setFormData({ ...formData, monthly_contribution: e.target.value.replace(/^0+(?=\d)/, '') })}
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
               />
             </div>

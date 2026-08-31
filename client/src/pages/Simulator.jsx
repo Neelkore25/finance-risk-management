@@ -158,7 +158,8 @@ export function Simulator() {
                   type="number"
                   step="1000"
                   value={whatIfInputs.additionalSavings}
-                  onChange={(e) => setWhatIfInputs({ ...whatIfInputs, additionalSavings: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setWhatIfInputs({ ...whatIfInputs, additionalSavings: Number(e.target.value.replace(/^0+(?=\d)/, '') || 0) })}
                   className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>
@@ -171,7 +172,8 @@ export function Simulator() {
                   type="number"
                   step="100"
                   value={whatIfInputs.additionalDebt}
-                  onChange={(e) => setWhatIfInputs({ ...whatIfInputs, additionalDebt: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setWhatIfInputs({ ...whatIfInputs, additionalDebt: Number(e.target.value.replace(/^0+(?=\d)/, '') || 0) })}
                   className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>
@@ -184,7 +186,8 @@ export function Simulator() {
                   type="number"
                   step="1000"
                   value={whatIfInputs.emergencySavingsChange}
-                  onChange={(e) => setWhatIfInputs({ ...whatIfInputs, emergencySavingsChange: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setWhatIfInputs({ ...whatIfInputs, emergencySavingsChange: Number(e.target.value.replace(/^0+(?=\d)/, '') || 0) })}
                   className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>

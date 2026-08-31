@@ -105,7 +105,8 @@ export function CreditRisk() {
                   min="0"
                   required
                   value={formData.income}
-                  onChange={(e) => setFormData({ ...formData, income: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setFormData({ ...formData, income: Number(e.target.value.replace(/^0+(?=\d)/, '') || 0) })}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>
@@ -117,7 +118,8 @@ export function CreditRisk() {
                   min="0"
                   required
                   value={formData.existingDebt}
-                  onChange={(e) => setFormData({ ...formData, existingDebt: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setFormData({ ...formData, existingDebt: Number(e.target.value.replace(/^0+(?=\d)/, '') || 0) })}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>
@@ -129,7 +131,8 @@ export function CreditRisk() {
                   min="0"
                   required
                   value={formData.loanAmount}
-                  onChange={(e) => setFormData({ ...formData, loanAmount: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setFormData({ ...formData, loanAmount: Number(e.target.value.replace(/^0+(?=\d)/, '') || 0) })}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>
@@ -141,7 +144,8 @@ export function CreditRisk() {
                   min="1"
                   required
                   value={formData.creditHistoryMonths}
-                  onChange={(e) => setFormData({ ...formData, creditHistoryMonths: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setFormData({ ...formData, creditHistoryMonths: Number(e.target.value.replace(/^0+(?=\d)/, '') || 0) })}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>
@@ -154,7 +158,8 @@ export function CreditRisk() {
                   max="100"
                   required
                   value={formData.paymentHistoryScore}
-                  onChange={(e) => setFormData({ ...formData, paymentHistoryScore: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setFormData({ ...formData, paymentHistoryScore: Number(e.target.value.replace(/^0+(?=\d)/, '') || 0) })}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>
@@ -166,7 +171,8 @@ export function CreditRisk() {
                   min="0"
                   required
                   value={formData.missedPayments}
-                  onChange={(e) => setFormData({ ...formData, missedPayments: Number(e.target.value) })}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setFormData({ ...formData, missedPayments: Number(e.target.value.replace(/^0+(?=\d)/, '') || 0) })}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
                 />
               </div>

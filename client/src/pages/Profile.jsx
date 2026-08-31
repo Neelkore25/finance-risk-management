@@ -40,9 +40,14 @@ export function Profile() {
   }, []);
 
   const handleChange = (field, val) => {
+    if (val === '') {
+      setProfile(prev => ({ ...prev, [field]: '' }));
+      return;
+    }
+    const clean = String(val).replace(/^0+(?=\d)/, '');
     setProfile(prev => ({
       ...prev,
-      [field]: Math.max(0, Number(val || 0))
+      [field]: clean === '' ? '' : Math.max(0, Number(clean))
     }));
   };
 
@@ -53,9 +58,19 @@ export function Profile() {
     setError('');
 
     try {
+      const sanitizedProfile = {
+        ...profile,
+        monthly_income: Number(profile.monthly_income || 0),
+        monthly_essential_expenses: Number(profile.monthly_essential_expenses || 0),
+        monthly_discretionary_expenses: Number(profile.monthly_discretionary_expenses || 0),
+        existing_savings: Number(profile.existing_savings || 0),
+        emergency_fund: Number(profile.emergency_fund || 0),
+        monthly_debt_payment: Number(profile.monthly_debt_payment || 0)
+      };
+
       const res = await apiFetch('/profile', {
         method: 'PUT',
-        body: JSON.stringify(profile)
+        body: JSON.stringify(sanitizedProfile)
       });
       setProfile(res.profile);
       setMessage('Financial profile successfully updated and risk engine re-evaluated.');
@@ -82,7 +97,7 @@ export function Profile() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -121,7 +136,8 @@ export function Profile() {
                 <input
                   type="number"
                   min="0"
-                  value={profile.monthly_income}
+                  value={profile.monthly_income ?? ''}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => handleChange('monthly_income', e.target.value)}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                 />
@@ -134,7 +150,8 @@ export function Profile() {
                 <input
                   type="number"
                   min="0"
-                  value={profile.monthly_debt_payment}
+                  value={profile.monthly_debt_payment ?? ''}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => handleChange('monthly_debt_payment', e.target.value)}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                 />
@@ -147,7 +164,8 @@ export function Profile() {
                 <input
                   type="number"
                   min="0"
-                  value={profile.monthly_essential_expenses}
+                  value={profile.monthly_essential_expenses ?? ''}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => handleChange('monthly_essential_expenses', e.target.value)}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                 />
@@ -160,7 +178,8 @@ export function Profile() {
                 <input
                   type="number"
                   min="0"
-                  value={profile.monthly_discretionary_expenses}
+                  value={profile.monthly_discretionary_expenses ?? ''}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => handleChange('monthly_discretionary_expenses', e.target.value)}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                 />
@@ -173,7 +192,8 @@ export function Profile() {
                 <input
                   type="number"
                   min="0"
-                  value={profile.existing_savings}
+                  value={profile.existing_savings ?? ''}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => handleChange('existing_savings', e.target.value)}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                 />
@@ -186,7 +206,8 @@ export function Profile() {
                 <input
                   type="number"
                   min="0"
-                  value={profile.emergency_fund}
+                  value={profile.emergency_fund ?? ''}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => handleChange('emergency_fund', e.target.value)}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                 />

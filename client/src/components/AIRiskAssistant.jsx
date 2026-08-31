@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Bot, 
   Send, 
@@ -18,6 +19,7 @@ import {
   Trash2,
   Maximize2,
   Minimize2,
+  Minus,
   Zap
 } from 'lucide-react';
 import { 
@@ -327,7 +329,12 @@ export function AIRiskAssistant() {
   // Pending One-shot batch update state
   const [pendingBatchUpdate, setPendingBatchUpdate] = useState(null);
 
-  const chatEndRef = useRef(null);
+  const location = useLocation();
+
+  // Auto-minimize assistant when user changes pages/tabs so it doesn't block content
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
 
   // Auto-scroll chat on new message
   useEffect(() => {
@@ -835,6 +842,13 @@ export function AIRiskAssistant() {
               <button 
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                title="Minimize / Dock Assistant"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <button 
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                 title="Close Assistant"
               >
                 <X className="w-4 h-4" />
