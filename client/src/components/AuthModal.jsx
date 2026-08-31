@@ -55,7 +55,7 @@ export function AuthModal({ isOpen = true }) {
     <div 
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 transition-all duration-250 ease-out ${
         isOpen 
-          ? 'opacity-100 pointer-events-auto bg-[#07090D]/75 backdrop-blur-[14px]' 
+          ? 'opacity-100 pointer-events-auto bg-[#07090D]/25 backdrop-blur-[8px]' 
           : 'opacity-0 pointer-events-none bg-transparent backdrop-blur-none'
       }`}
     >
@@ -65,8 +65,8 @@ export function AuthModal({ isOpen = true }) {
           toast.show ? 'translate-y-0 opacity-100' : '-translate-y-16 opacity-0 pointer-events-none'
         } ${
           toast.type === 'ok'
-            ? 'bg-[#0D1724] border-cyan-500/40 text-cyan-300'
-            : 'bg-[#0D1724] border-rose-500/40 text-rose-300'
+            ? 'bg-[#0D1724]/90 border-cyan-500/40 text-cyan-300 backdrop-blur-md'
+            : 'bg-[#0D1724]/90 border-rose-500/40 text-rose-300 backdrop-blur-md'
         }`}
       >
         <span className="shrink-0">
@@ -81,25 +81,25 @@ export function AuthModal({ isOpen = true }) {
 
       {/* Centered Glass Modal Card */}
       <div 
-        className="w-full max-w-[360px] rounded-2xl bg-[#0D1724]/90 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] p-7 sm:p-8 flex flex-col items-center text-center relative overflow-hidden backdrop-blur-2xl transition-transform duration-250 ease-out transform scale-100"
+        className="w-full max-w-[380px] rounded-2xl bg-[#0D1724]/75 dark:bg-[#07090D]/80 border border-white/15 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] p-7 sm:p-8 flex flex-col items-center text-center relative overflow-hidden backdrop-blur-2xl transition-transform duration-250 ease-out transform scale-100"
       >
         {/* Subtle Obsidian Aurora Gradient Glow */}
-        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-44 h-44 bg-gradient-to-br from-cyan-500/20 via-violet-600/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 bg-gradient-to-br from-cyan-500/25 via-violet-600/20 to-transparent rounded-full blur-3xl pointer-events-none" />
 
         {/* Logo Badge */}
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500 to-violet-600 p-[1.5px] shadow-lg shadow-cyan-500/20 mb-4 flex items-center justify-center">
-          <div className="w-full h-full bg-[#07090D] rounded-[10px] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500 to-violet-600 p-[1.5px] shadow-lg shadow-cyan-500/25 mb-4 flex items-center justify-center">
+          <div className="w-full h-full bg-[#07090D]/90 rounded-[10px] flex items-center justify-center">
             <Shield className="w-6 h-6 text-cyan-400" />
           </div>
         </div>
 
         {/* App Title */}
         <h2 className="text-xl font-bold text-white tracking-tight">
-          RiskGuard
+          Finance Risk Analytics
         </h2>
 
         {/* Workspace Subtitle */}
-        <p className="text-xs text-slate-400 mt-1 mb-6">
+        <p className="text-xs text-slate-300/90 mt-1 mb-6">
           Sign in to your risk workspace
         </p>
 
@@ -107,7 +107,7 @@ export function AuthModal({ isOpen = true }) {
         <button
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs tracking-wide transition-all duration-200 flex items-center justify-center gap-3 shadow-lg shadow-white/5 hover:scale-[1.01] active:scale-[0.99] border border-slate-200 disabled:opacity-60 disabled:cursor-not-allowed group"
+          className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs tracking-wide transition-all duration-200 flex items-center justify-center gap-3 shadow-lg shadow-white/10 hover:scale-[1.01] active:scale-[0.99] border border-slate-200 disabled:opacity-60 disabled:cursor-not-allowed group"
         >
           {loading ? (
             <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
@@ -118,11 +118,11 @@ export function AuthModal({ isOpen = true }) {
         </button>
 
         {/* Optional Small Terms / Privacy Footer */}
-        <p className="text-[10px] text-slate-500 mt-6 leading-relaxed">
+        <p className="text-[10px] text-slate-400 mt-6 leading-relaxed">
           By continuing, you agree to our{' '}
-          <span className="text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer">Terms of Service</span>
+          <span className="text-slate-300 hover:text-cyan-400 transition-colors cursor-pointer">Terms of Service</span>
           {' '}&{' '}
-          <span className="text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer">Privacy Policy</span>.
+          <span className="text-slate-300 hover:text-cyan-400 transition-colors cursor-pointer">Privacy Policy</span>.
         </p>
       </div>
     </div>
