@@ -289,6 +289,20 @@ def simulate_what_if(req: WhatIfRequest):
 def Math_round(val):
     return int(round(val))
 
+@app.get("/{full_path:path}")
+def serve_spa_frontend(full_path: str):
+    if full_path.startswith("api") or full_path.startswith("docs") or full_path.startswith("openapi.json") or full_path.startswith("health") or full_path.startswith("redoc"):
+        raise HTTPException(status_code=404, detail="Not Found")
+    
+    specific_file = os.path.join(static_path, full_path)
+    if full_path and os.path.isfile(specific_file):
+        return FileResponse(specific_file)
+        
+    index_file = os.path.join(static_path, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    raise HTTPException(status_code=404, detail="Frontend build not found")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
