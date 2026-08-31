@@ -4,13 +4,11 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
+import { AuthModal } from './components/AuthModal';
 import { AIRiskAssistant } from './components/AIRiskAssistant';
 import { Activity } from 'lucide-react';
 
 // Lazy Loaded Pages for performance and code-splitting
-const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const Register = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
 const Expenses = lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
@@ -38,26 +36,13 @@ function PageFallback() {
   );
 }
 
-function RequireAuth({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-xs font-semibold">
-        Initializing Finance Risk Analytics Session...
-      </div>
-    );
-  }
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  return children;
-}
-
 function MainLayout() {
+  const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#080F1A] text-slate-900 dark:text-slate-100 flex opacity-100 transition-colors duration-150">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07090D] text-slate-900 dark:text-slate-100 flex opacity-100 transition-colors duration-150 relative">
+      {/* Background Dashboard & App Shell Layout (Mounted even before auth) */}
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       
       <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
@@ -87,7 +72,10 @@ function MainLayout() {
       </div>
 
       {/* Floating AI Risk Assistant Widget */}
-      <AIRiskAssistant />
+      {user && <AIRiskAssistant />}
+
+      {/* Modal-Over-Dashboard Authentication Overlay (Google OAuth Only) */}
+      <AuthModal isOpen={!user} />
     </div>
   );
 }
@@ -98,17 +86,7 @@ export function App() {
       <AuthProvider>
         <HashRouter>
           <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route
-              path="/*"
-              element={
-                <RequireAuth>
-                  <MainLayout />
-                </RequireAuth>
-              }
-            />
+            <Route path="/*" element={<MainLayout />} />
           </Routes>
         </HashRouter>
       </AuthProvider>

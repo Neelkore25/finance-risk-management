@@ -39,7 +39,88 @@ import {
   CartesianGrid
 } from 'recharts';
 
+import { useAuth } from '../context/AuthContext';
+
+export function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 font-sans select-none pointer-events-none">
+      {/* 1. TOP HEADER SECTION SKELETON */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-white/10">
+        <div className="space-y-1.5">
+          <div className="h-7 w-48 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
+          <div className="h-3.5 w-64 bg-slate-200 dark:bg-white/5 rounded-md animate-pulse" />
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-36 bg-slate-200 dark:bg-white/10 rounded-xl animate-pulse" />
+          <div className="h-8 w-28 bg-slate-200 dark:bg-white/10 rounded-xl animate-pulse" />
+        </div>
+      </div>
+
+      {/* 2. 4 TOP METRIC CARDS SKELETON */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Overall Solvency Risk', sub: 'Composite multi-factor index' },
+          { label: 'Monthly Net Cash Flow', sub: 'Surplus after living & debt' },
+          { label: 'Debt Burden & EMI', sub: 'Monthly debt service ratio' },
+          { label: '1-Day Portfolio VaR', sub: '95% parametric confidence' }
+        ].map((card, i) => (
+          <div key={i} className="p-5 rounded-2xl bg-white dark:bg-[#0D1724] border border-slate-200 dark:border-white/10 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{card.label}</span>
+              <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-white/10 animate-pulse" />
+            </div>
+            <div className="h-8 w-28 bg-slate-200 dark:bg-white/10 rounded-lg animate-pulse" />
+            <div className="h-3 w-40 bg-slate-200 dark:bg-white/5 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+
+      {/* 3. ROW 2: 2 MAIN CHART CARDS SKELETON */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-6 p-6 rounded-2xl bg-white dark:bg-[#0D1724] border border-slate-200 dark:border-white/10 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-44 bg-slate-200 dark:bg-white/10 rounded animate-pulse" />
+            <div className="h-4 w-16 bg-slate-200 dark:bg-white/5 rounded animate-pulse" />
+          </div>
+          <div className="h-56 flex items-center justify-center">
+            <div className="w-40 h-40 rounded-full border-8 border-slate-200 dark:border-white/5 animate-pulse" />
+          </div>
+        </div>
+        <div className="lg:col-span-6 p-6 rounded-2xl bg-white dark:bg-[#0D1724] border border-slate-200 dark:border-white/10 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-40 bg-slate-200 dark:bg-white/10 rounded animate-pulse" />
+            <div className="h-4 w-16 bg-slate-200 dark:bg-white/5 rounded animate-pulse" />
+          </div>
+          <div className="h-56 flex items-end justify-between gap-3 px-4 pb-2">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="w-full bg-slate-200 dark:bg-white/5 rounded-t-lg animate-pulse"
+                style={{ height: `${30 + (i % 4) * 20}%` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 4. ROW 3: 3 BOTTOM CARDS SKELETON */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="lg:col-span-4 p-5 rounded-2xl bg-white dark:bg-[#0D1724] border border-slate-200 dark:border-white/10 space-y-3 shadow-sm">
+            <div className="h-4 w-36 bg-slate-200 dark:bg-white/10 rounded animate-pulse" />
+            <div className="space-y-2.5 pt-2">
+              <div className="h-12 w-full bg-slate-200 dark:bg-white/5 rounded-xl animate-pulse" />
+              <div className="h-12 w-full bg-slate-200 dark:bg-white/5 rounded-xl animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard() {
+  const { user } = useAuth();
   const [personalRisk, setPersonalRisk] = useState(null);
   const [portfolioRisk, setPortfolioRisk] = useState(null);
   const [creditRisk, setCreditRisk] = useState(null);
@@ -49,6 +130,10 @@ export function Dashboard() {
   const [settings, setSettings] = useState(getSavedSettings);
 
   async function loadDashboardData() {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       const activeSettings = getSavedSettings();
       setSettings(activeSettings);
@@ -74,7 +159,12 @@ export function Dashboard() {
   }
 
   useEffect(() => {
-    loadDashboardData();
+    if (user) {
+      loadDashboardData();
+    } else {
+      setLoading(false);
+    }
+
     window.addEventListener('profileUpdated', loadDashboardData);
     window.addEventListener('expensesUpdated', loadDashboardData);
     window.addEventListener('debtUpdated', loadDashboardData);
@@ -87,17 +177,10 @@ export function Dashboard() {
       window.removeEventListener('portfolioUpdated', loadDashboardData);
       window.removeEventListener('settingsUpdated', loadDashboardData);
     };
-  }, []);
+  }, [user]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-xs font-semibold text-slate-400 animate-pulse flex items-center gap-2">
-          <Activity className="w-5 h-5 animate-spin text-blue-500" />
-          Loading Portfolio Risk Intelligence Engine...
-        </div>
-      </div>
-    );
+  if (!user || loading) {
+    return <DashboardSkeleton />;
   }
 
   const { overallScore, overallLevel, metrics, categories, overallSummary } = personalRisk || {};
