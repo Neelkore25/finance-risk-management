@@ -7,7 +7,6 @@ import {
   Menu,
   Sun,
   Moon,
-  Monitor,
   LogOut,
   Search,
   Bell,
@@ -102,8 +101,6 @@ export function Navbar({ setMobileOpen }) {
   const nameToDisplay = displayName || userProfile?.full_name || user?.user_metadata?.full_name || (user?.email ? user.email.split('@')[0] : 'Neel Kore');
   const roleDisplay = userProfile?.role || 'Admin';
 
-  const themeLabel = theme === 'auto' ? `Auto (${resolvedTheme === 'dark' ? 'Dark' : 'Light'})` : theme === 'dark' ? 'Dark' : 'Light';
-
   return (
     <header className="sticky top-0 z-30 h-16 bg-white dark:bg-[#080F1A] border-b border-slate-200 dark:border-white/10 px-4 lg:px-8 flex items-center justify-between shadow-sm dark:shadow-lg transition-colors duration-150">
       {/* Left: Mobile Toggle & Functional Global Search */}
@@ -173,23 +170,21 @@ export function Navbar({ setMobileOpen }) {
         </div>
       </div>
 
-      {/* Right Actions: 3-Way Theme Toggle, Notifications, User Profile */}
+      {/* Right Actions: Theme Toggle (Light <-> Night), Notifications, User Profile */}
       <div className="flex items-center gap-3">
-        {/* 3-Mode Theme Toggle (Light -> Dark -> Auto -> Light) */}
+        {/* 2-Mode Theme Toggle (Light <-> Night) */}
         <button
           onClick={toggleTheme}
-          title={`Theme: ${themeLabel} (Click to switch)`}
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Night Mode'}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#0D1724] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10 transition-colors shadow-sm text-xs font-semibold"
         >
-          {theme === 'auto' ? (
-            <Monitor className="w-4 h-4 text-blue-500" />
-          ) : theme === 'dark' ? (
+          {theme === 'dark' ? (
             <Moon className="w-4 h-4 text-indigo-400" />
           ) : (
             <Sun className="w-4 h-4 text-amber-500" />
           )}
-          <span className="hidden sm:inline text-[11px] font-medium capitalize">
-            {theme === 'auto' ? 'Auto' : theme}
+          <span className="hidden sm:inline text-[11px] font-medium">
+            {theme === 'dark' ? 'Night' : 'Light'}
           </span>
         </button>
 
